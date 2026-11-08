@@ -1,0 +1,4 @@
+# Python 3.11+ (Streamlit 1.67 requires it)
+streamlit>=1.67,<2
+pytest>=9.2,<10
+python-dotenv>=1.2,<2
