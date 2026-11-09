@@ -1,0 +1,77 @@
+# QASeed — Testing and Daily Test Reports (Days 3–8)
+
+Tools: **pytest** (test runner) + **pytest-html** (standalone HTML report with pass/fail details, durations, timestamps and environment metadata). Both are in `requirements.txt`.
+
+## Folder layout
+
+```text
+QASeed/
+├── qaseed/<module>.py          # application code
+├── app.py                      # Streamlit UI
+├── tests/
+│   ├── conftest.py             # report title + safe metadata (no secrets)
+│   ├── fixtures/               # scenario sets, canned LLM replies
+│   └── test_<module>.py        # one test file per module (enforced)
+├── scripts/test_report.py      # runs pytest and writes the day's report
+└── reports/
+    ├── day3/
+    │   ├── index.md                               # one row per run
+    │   └── day3_test_report_YYYYMMDD-HHMMSS.html  # self-contained report
+    ├── day4/ ... day8/
+```
+
+## Daily command (terminal, venv active)
+
+```bash
+python scripts/test_report.py
+```
+
+The day is worked out from the date (Day 3 = 9 Nov 2026 … Day 8 = 14 Nov 2026). To choose it yourself:
+
+```bash
+python scripts/test_report.py --day 4
+```
+
+Extra pytest options go after `--`, e.g. only planner tests:
+
+```bash
+python scripts/test_report.py --day 4 -- -k planner
+```
+
+Open the HTML file from `reports/dayN/` in a browser. `reports/dayN/index.md` lists every run that day with pass/fail counts and the commit it ran on.
+
+Quick runs without a report are still fine: `python -m pytest -q`.
+
+## Rules
+
+1. **One test file per module.** Every `qaseed/<name>.py` and `app.py` must have `tests/test_<name>.py`. `tests/test_layout.py::test_every_module_has_its_own_test_file` fails if one is missing, so a new Day 4–8 module (e.g. a generator) needs its test file in the same change.
+2. **New behaviour ships with tests.** Add or update tests in the same change as the code. Never delete or weaken a test just to get a green report.
+3. **No live API calls in pytest.** Tests use mock `post`/`get` functions and fake keys (`AIzaSyTEST…`). Live Gemini checks are run separately (`python -m qaseed.llm_ping`, `python -m qaseed.evaluate --live`) and recorded as LIVE evidence, never mixed into the mock results.
+4. **Generate a report at least once per day,** at the end of the day's work and before any commit you plan to show as evidence.
+5. **Keep reports honest.** Do not edit report files by hand. A failing run stays in `index.md`; fix the problem and run again, so the history shows both.
+6. **No secrets in reports.** Report metadata shows only the Gemini *model ID*, branch and commit, never the key. Before committing reports, check: `git grep -n "AIza" -- reports` should print nothing except fake `AIzaSyTEST` values (normally nothing at all).
+7. **Reports are evidence.** `reports/` is tracked by Git, so the DDS workbook can link to a report. Commit the final report of each day; delete scratch reports from the same day first if you don't want them public, and update `index.md` to match.
+
+## What the reports cover
+
+| Test file | Covers |
+|---|---|
+| `test_layout.py` | Project files, `.gitignore` rules, module-test rule |
+| `test_config.py` | Paths and `.env` loading |
+| `test_schema.py` | SQLite schema, foreign keys, allowed values |
+| `test_llm_client.py` | Gemini request/response helpers, errors, key redaction |
+| `test_llm_ping.py` | Connectivity check and `--list-models` (mocked) |
+| `test_plan_models.py` | Pydantic plan contract |
+| `test_plan_validator.py` | Deterministic plan validation |
+| `test_planner.py` | Planner flow with 18 mock scenarios, retries, prompt P02 |
+| `test_evaluate.py` | Scenario evaluation runner |
+| `test_app.py` | Streamlit app renders without errors (headless) |
+| `test_report_script.py` | Daily report helper |
+
+## Saving live model results next to the day's report (optional)
+
+Live results are not part of pytest. To keep a text copy in the same day folder, use `cmd` redirection (PowerShell 5.1 redirection writes UTF-16):
+
+```bash
+cmd /c "python -m qaseed.evaluate --live --ids S01,S08,S14 > reports\day3\live_eval_P02.txt"
+```
