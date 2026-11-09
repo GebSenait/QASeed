@@ -2,12 +2,17 @@
 
 from __future__ import annotations
 
+import re
 import sqlite3
 from pathlib import Path
 
 from qaseed.config import SCHEMA_PATH
 
 TABLE_ORDER = ("customers", "subscriptions", "invoices", "payments")
+
+# Matches column-level checks such as: status TEXT NOT NULL CHECK (status IN ('a', 'b'))
+_CHECK_IN_RE = re.compile(r"CHECK\s*\(\s*(\w+)\s+IN\s*\(([^)]*)\)\s*\)", re.IGNORECASE)
+_QUOTED_RE = re.compile(r"'([^']*)'")
 
 
 def create_connection(
@@ -51,6 +56,15 @@ def inspect_schema(conn: sqlite3.Connection) -> dict:
     }
 
 
+def load_schema(schema_path: Path = SCHEMA_PATH) -> dict:
+    """Inspect the sample schema in a throwaway in-memory database."""
+    conn = create_connection(schema_path=schema_path)
+    try:
+        return inspect_schema(conn)
+    finally:
+        conn.close()
+
+
 def main() -> None:
     """Print a short schema summary. Used as a local smoke check."""
     conn = create_connection()
@@ -64,6 +78,10 @@ def main() -> None:
         print(f"{table['name']}: {columns}")
         for fk in table["foreign_keys"]:
             print(f"  {fk['from_column']} -> {fk['to_table']}.{fk['to_column']}")
+        for column, values in table["allowed_values"].items():
+            print(f"  {column} in ({', '.join(values)})")
+        for column in table["unique_columns"]:
+            print(f"  unique: {column}")
 
 
 def _enable_foreign_keys(conn: sqlite3.Connection) -> None:
@@ -95,7 +113,37 @@ def _table_info(conn: sqlite3.Connection, name: str) -> dict:
         }
         for fk in conn.execute(f"PRAGMA foreign_key_list({ident})")
     ]
-    return {"name": name, "columns": columns, "foreign_keys": foreign_keys}
+    return {
+        "name": name,
+        "columns": columns,
+        "foreign_keys": foreign_keys,
+        "allowed_values": _allowed_values(conn, name),
+        "unique_columns": _unique_columns(conn, ident),
+    }
+
+
+def _allowed_values(conn: sqlite3.Connection, name: str) -> dict[str, list[str]]:
+    """Read CHECK (column IN ('a', 'b')) value lists from the table definition."""
+    row = conn.execute(
+        "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?", (name,)
+    ).fetchone()
+    sql = row["sql"] if row and row["sql"] else ""
+    return {
+        match.group(1): _QUOTED_RE.findall(match.group(2))
+        for match in _CHECK_IN_RE.finditer(sql)
+    }
+
+
+def _unique_columns(conn: sqlite3.Connection, ident: str) -> list[str]:
+    """Single-column UNIQUE constraints (primary keys are listed separately)."""
+    columns = []
+    for index in conn.execute(f"PRAGMA index_list({ident})"):
+        if not index["unique"] or index["origin"] == "pk":
+            continue
+        parts = conn.execute(f"PRAGMA index_info({_quote_ident(index['name'])})").fetchall()
+        if len(parts) == 1:
+            columns.append(parts[0]["name"])
+    return sorted(columns)
 
 
 def _quote_ident(name: str) -> str:

@@ -1,7 +1,5 @@
 """Smoke checks for the Day 2 project skeleton."""
 
-from pathlib import Path
-
 from qaseed import __version__
 from qaseed.config import ROOT, SCHEMA_PATH, database_path
 
@@ -16,6 +14,7 @@ REQUIRED_FILES = (
     "qaseed/config.py",
     "qaseed/schema.py",
     "qaseed/llm_ping.py",
+    "qaseed/llm_client.py",
 )
 
 GITIGNORE_RULES = (
@@ -74,3 +73,11 @@ def test_app_source_compiles():
     compile(source, "app.py", "exec")
     assert "streamlit" in source
     assert "Scenario generation is not yet implemented." in source
+
+
+def test_every_module_has_its_own_test_file():
+    """Project rule: each qaseed/<name>.py and app.py has tests/test_<name>.py."""
+    modules = [path for path in (ROOT / "qaseed").glob("*.py") if path.name != "__init__.py"]
+    modules.append(ROOT / "app.py")
+    missing = [f"tests/test_{path.stem}.py" for path in modules if not (ROOT / "tests" / f"test_{path.stem}.py").is_file()]
+    assert missing == []

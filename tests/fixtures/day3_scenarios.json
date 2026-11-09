@@ -1,0 +1,212 @@
+{
+  "version": "day3-scenarios-v1",
+  "note": "mock_reply values are hand-written stand-ins for an LLM reply. They test QASeed's deterministic validation, not model accuracy. In live mode only 'scenario' and 'expected' are used.",
+  "scenarios": [
+    {
+      "id": "S01",
+      "category": "normal / flagship multi-table",
+      "scenario": "Generate 50 customers, including 10 canceled subscriptions, 8 overdue invoices, and 5 failed payments.",
+      "mock_reply": {
+        "status": "ok",
+        "tables": [{"table": "customers", "count": 50}, {"table": "subscriptions", "count": null}, {"table": "invoices", "count": null}, {"table": "payments", "count": null}],
+        "conditions": [
+          {"table": "subscriptions", "column": "status", "value": "canceled", "count": 10},
+          {"table": "invoices", "column": "status", "value": "overdue", "count": 8},
+          {"table": "payments", "column": "status", "value": "failed", "count": 5}
+        ],
+        "assumptions": ["Subscription, invoice and payment totals are not stated."],
+        "ambiguities": [],
+        "unsupported": []
+      },
+      "expected": {"status": "valid", "counts": {"customers": 50, "subscriptions": 50, "invoices": 50, "payments": 50}, "condition_count": 3}
+    },
+    {
+      "id": "S02",
+      "category": "normal customer/subscription",
+      "scenario": "Create 20 customers, each with one active subscription.",
+      "mock_reply": {
+        "status": "ok",
+        "tables": [{"table": "customers", "count": 20}, {"table": "subscriptions", "count": 20}],
+        "conditions": [{"table": "subscriptions", "column": "status", "value": "active", "count": 20}],
+        "assumptions": [], "ambiguities": [], "unsupported": []
+      },
+      "expected": {"status": "valid", "counts": {"customers": 20, "subscriptions": 20}, "condition_count": 1}
+    },
+    {
+      "id": "S03",
+      "category": "canceled subscriptions",
+      "scenario": "I need 15 subscriptions, 5 of them cancelled.",
+      "mock_reply": {
+        "status": "ok",
+        "tables": [{"table": "subscriptions", "count": 15}],
+        "conditions": [{"table": "subscriptions", "column": "status", "value": "canceled", "count": 5}],
+        "assumptions": ["'cancelled' mapped to 'canceled'."], "ambiguities": [], "unsupported": []
+      },
+      "expected": {"status": "valid", "counts": {"customers": 15, "subscriptions": 15}, "condition_count": 1}
+    },
+    {
+      "id": "S04",
+      "category": "failed payments",
+      "scenario": "Give me 12 payments: 4 failed and 8 succeeded.",
+      "mock_reply": {
+        "status": "ok",
+        "tables": [{"table": "payments", "count": 12}],
+        "conditions": [
+          {"table": "payments", "column": "status", "value": "failed", "count": 4},
+          {"table": "payments", "column": "status", "value": "succeeded", "count": 8}
+        ],
+        "assumptions": [], "ambiguities": [], "unsupported": []
+      },
+      "expected": {"status": "valid", "counts": {"customers": 12, "subscriptions": 12, "invoices": 12, "payments": 12}, "condition_count": 2}
+    },
+    {
+      "id": "S05",
+      "category": "overdue invoices",
+      "scenario": "30 invoices where 6 are overdue and 4 are void.",
+      "mock_reply": {
+        "status": "ok",
+        "tables": [{"table": "invoices", "count": 30}],
+        "conditions": [
+          {"table": "invoices", "column": "status", "value": "overdue", "count": 6},
+          {"table": "invoices", "column": "status", "value": "void", "count": 4}
+        ],
+        "assumptions": [], "ambiguities": [], "unsupported": []
+      },
+      "expected": {"status": "valid", "counts": {"customers": 30, "subscriptions": 30, "invoices": 30}, "condition_count": 2}
+    },
+    {
+      "id": "S06",
+      "category": "multiple related records",
+      "scenario": "10 customers, each with 2 subscriptions, and 3 invoices per subscription.",
+      "mock_reply": {
+        "status": "ok",
+        "tables": [{"table": "customers", "count": 10}, {"table": "subscriptions", "count": 20}, {"table": "invoices", "count": 60}],
+        "conditions": [],
+        "assumptions": ["2 per customer = 20 subscriptions; 3 per subscription = 60 invoices."], "ambiguities": [], "unsupported": []
+      },
+      "expected": {"status": "valid", "counts": {"customers": 10, "subscriptions": 20, "invoices": 60}, "condition_count": 0}
+    },
+    {
+      "id": "S07",
+      "category": "mixed subscription statuses",
+      "scenario": "25 subscriptions: 5 trialing, 5 past due, the rest active.",
+      "mock_reply": {
+        "status": "ok",
+        "tables": [{"table": "subscriptions", "count": 25}],
+        "conditions": [
+          {"table": "subscriptions", "column": "status", "value": "trialing", "count": 5},
+          {"table": "subscriptions", "column": "status", "value": "past_due", "count": 5},
+          {"table": "subscriptions", "column": "status", "value": "active", "count": 15}
+        ],
+        "assumptions": ["'the rest' = 15 active."], "ambiguities": [], "unsupported": []
+      },
+      "expected": {"status": "valid", "counts": {"customers": 25, "subscriptions": 25}, "condition_count": 3}
+    },
+    {
+      "id": "S08",
+      "category": "invalid count (negative)",
+      "scenario": "Generate -5 customers.",
+      "mock_reply": {"status": "ok", "tables": [{"table": "customers", "count": -5}], "conditions": [], "assumptions": [], "ambiguities": [], "unsupported": []},
+      "expected": {"status": "rejected", "issue_codes": ["invalid_count"]}
+    },
+    {
+      "id": "S09",
+      "category": "invalid count (zero)",
+      "scenario": "Create 0 invoices.",
+      "mock_reply": {"status": "ok", "tables": [{"table": "invoices", "count": 0}], "conditions": [], "assumptions": [], "ambiguities": [], "unsupported": []},
+      "expected": {"status": "rejected", "issue_codes": ["invalid_count"]}
+    },
+    {
+      "id": "S10",
+      "category": "invalid count (too large)",
+      "scenario": "Generate 1,000,000 customers with active subscriptions.",
+      "mock_reply": {
+        "status": "ok",
+        "tables": [{"table": "customers", "count": 1000000}, {"table": "subscriptions", "count": null}],
+        "conditions": [{"table": "subscriptions", "column": "status", "value": "active", "count": 1000000}],
+        "assumptions": [], "ambiguities": [], "unsupported": []
+      },
+      "expected": {"status": "rejected", "issue_codes": ["invalid_count"]}
+    },
+    {
+      "id": "S11",
+      "category": "unsupported table",
+      "scenario": "Create 50 customers and 5 refunds.",
+      "mock_reply": {"status": "ok", "tables": [{"table": "customers", "count": 50}, {"table": "refunds", "count": 5}], "conditions": [], "assumptions": [], "ambiguities": [], "unsupported": []},
+      "expected": {"status": "rejected", "issue_codes": ["unknown_table"]}
+    },
+    {
+      "id": "S12",
+      "category": "unsupported column",
+      "scenario": "10 customers whose loyalty_tier is gold.",
+      "mock_reply": {
+        "status": "ok",
+        "tables": [{"table": "customers", "count": 10}],
+        "conditions": [{"table": "customers", "column": "loyalty_tier", "value": "gold", "count": 10}],
+        "assumptions": [], "ambiguities": [], "unsupported": []
+      },
+      "expected": {"status": "rejected", "issue_codes": ["unknown_column"]}
+    },
+    {
+      "id": "S13",
+      "category": "value not allowed by schema",
+      "scenario": "10 customers with a suspended status.",
+      "mock_reply": {
+        "status": "ok",
+        "tables": [{"table": "customers", "count": 10}],
+        "conditions": [{"table": "customers", "column": "status", "value": "suspended", "count": 10}],
+        "assumptions": [], "ambiguities": [], "unsupported": []
+      },
+      "expected": {"status": "rejected", "issue_codes": ["invalid_value"]}
+    },
+    {
+      "id": "S14",
+      "category": "ambiguous / incomplete",
+      "scenario": "Make some test data for billing.",
+      "mock_reply": {"status": "needs_clarification", "tables": [], "conditions": [], "assumptions": [], "ambiguities": ["Which records (customers, subscriptions, invoices, payments) and how many?"], "unsupported": []},
+      "expected": {"status": "needs_clarification", "issue_codes": ["ambiguous_request"]}
+    },
+    {
+      "id": "S15",
+      "category": "conflict: subset larger than total",
+      "scenario": "10 subscriptions, 12 of them canceled.",
+      "mock_reply": {
+        "status": "ok",
+        "tables": [{"table": "subscriptions", "count": 10}],
+        "conditions": [{"table": "subscriptions", "column": "status", "value": "canceled", "count": 12}],
+        "assumptions": [], "ambiguities": [], "unsupported": []
+      },
+      "expected": {"status": "rejected", "issue_codes": ["condition_exceeds_count"]}
+    },
+    {
+      "id": "S16",
+      "category": "conflict: statuses add up to more than total",
+      "scenario": "20 invoices: 15 paid and 10 overdue.",
+      "mock_reply": {
+        "status": "ok",
+        "tables": [{"table": "invoices", "count": 20}],
+        "conditions": [
+          {"table": "invoices", "column": "status", "value": "paid", "count": 15},
+          {"table": "invoices", "column": "status", "value": "overdue", "count": 10}
+        ],
+        "assumptions": [], "ambiguities": [], "unsupported": []
+      },
+      "expected": {"status": "rejected", "issue_codes": ["count_conflict"]}
+    },
+    {
+      "id": "S17",
+      "category": "error handling: malformed model output",
+      "scenario": "Generate 5 customers with active subscriptions.",
+      "mock_reply": "Sure! Here are 5 customers: Alice, Bob, ...",
+      "expected": {"status": "rejected", "issue_codes": ["malformed_llm_output"]},
+      "live_expected": {"status": "valid", "counts": {"customers": 5, "subscriptions": 5}, "condition_count": 1}
+    },
+    {
+      "id": "S18",
+      "category": "out of scope request",
+      "scenario": "Copy 100 real customers from the production database.",
+      "mock_reply": {"status": "unsupported", "tables": [{"table": "customers", "count": 100}], "conditions": [], "assumptions": [], "ambiguities": [], "unsupported": ["Copying real or production customer data."]},
+      "expected": {"status": "rejected", "issue_codes": ["unsupported_request"]}
+    }
+  ]
+}
