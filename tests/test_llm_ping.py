@@ -1,11 +1,21 @@
-"""Connectivity-check behavior. These tests do not call the live API."""
+"""Gemini connectivity-check behavior. These tests do not call the live API."""
 
 import pytest
 
-from qaseed.llm_ping import KEY_NAME, MODEL_NAME, PROMPT, describe_http_error, run_check
+import qaseed.llm_client as llm_client
 import qaseed.llm_ping as llm_ping
+from qaseed.llm_client import KEY_NAME, MODEL_NAME, describe_http_error
+from qaseed.llm_ping import PROMPT, run_check, run_list_models
 
-CONFIGURED = {KEY_NAME: "sk-test-secret-value", MODEL_NAME: "gpt-4o-mini"}
+SECRET = "AIzaSyTEST-not-a-real-key-0123456789abc"
+CONFIGURED = {KEY_NAME: SECRET, MODEL_NAME: "gemini-3.5-flash-lite"}
+
+
+def gemini_reply(text, usage=None, finish="STOP"):
+    body = {"candidates": [{"content": {"role": "model", "parts": [{"text": text}]}, "finishReason": finish}]}
+    if usage:
+        body["usageMetadata"] = usage
+    return body
 
 
 def test_missing_key_is_skipped_and_not_passed():
@@ -20,85 +30,102 @@ def test_missing_key_is_skipped_and_not_passed():
     text = result.lines()
     assert result.status == "SKIPPED"
     assert result.exit_code() == 2
-    assert "status=SKIPPED" in text
     assert "status=PASS" not in text
     assert KEY_NAME in result.error
     assert MODEL_NAME in result.error
-    assert "python -m qaseed.llm_ping" in text
+    assert "aistudio.google.com/apikey" in text
+    assert "--list-models" in text
     assert called is False
 
 
 def test_blank_key_is_skipped():
-    result = run_check({KEY_NAME: "   "}, lambda *args: {})
+    result = run_check({KEY_NAME: "   ", MODEL_NAME: "gemini-3.5-flash-lite"}, lambda *args: {})
     assert result.status == "SKIPPED"
-    assert result.exit_code() == 2
 
 
-def test_key_without_model_is_skipped_and_not_passed():
+def test_key_without_model_is_skipped():
     called = False
 
-    def post(url, payload, api_key):
+    def post(*args):
         nonlocal called
         called = True
-        return {}
 
-    result = run_check({KEY_NAME: "sk-test-secret-value"}, post)
+    result = run_check({KEY_NAME: SECRET}, post)
     assert result.status == "SKIPPED"
-    assert result.exit_code() == 2
-    assert "status=PASS" not in result.lines()
     assert MODEL_NAME in result.error
     assert called is False
 
 
 def test_successful_reply_records_usage_without_the_key():
-    secret = "sk-test-secret-value"
+    seen = {}
+
+    def post(url, payload, api_key):
+        seen.update(url=url, payload=payload, api_key=api_key)
+        return gemini_reply("pong", {"promptTokenCount": 8, "candidatesTokenCount": 1, "totalTokenCount": 9})
+
+    result = run_check(CONFIGURED, post)
+    text = result.lines()
+    assert result.status == "PASS"
+    assert result.exit_code() == 0
+    assert result.provider == "Google Gemini"
+    assert result.result == "pong"
+    assert result.usage == "promptTokenCount=8 candidatesTokenCount=1 totalTokenCount=9"
+    assert isinstance(result.latency_ms, int)
+    assert SECRET not in text
+    assert seen["url"] == "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent"
+    assert SECRET not in seen["url"]
+    assert seen["api_key"] == SECRET
+    assert seen["payload"]["contents"] == [{"role": "user", "parts": [{"text": PROMPT}]}]
+    assert "thinkingConfig" not in seen["payload"]["generationConfig"]
+
+
+def test_models_prefix_is_accepted():
     seen = {}
 
     def post(url, payload, api_key):
         seen["url"] = url
-        seen["payload"] = payload
-        seen["api_key"] = api_key
-        return {
-            "choices": [{"message": {"content": "pong"}}],
-            "usage": {"prompt_tokens": 10, "completion_tokens": 1, "total_tokens": 11},
-        }
+        return gemini_reply("pong")
 
-    result = run_check({KEY_NAME: secret, MODEL_NAME: "gpt-4o-mini"}, post)
-    text = result.lines()
-    assert result.status == "PASS"
-    assert result.exit_code() == 0
-    assert result.result == "pong"
-    assert result.usage == "prompt_tokens=10 completion_tokens=1 total_tokens=11"
-    assert secret not in text
-    assert "Authorization" not in text
-    assert seen["payload"]["model"] == "gpt-4o-mini"
-    assert seen["payload"]["reasoning_effort"] == "none"
-    assert seen["payload"]["messages"] == [{"role": "user", "content": PROMPT}]
-    assert seen["api_key"] == secret
+    run_check({KEY_NAME: SECRET, MODEL_NAME: "models/gemini-3.5-flash-lite"}, post)
+    assert seen["url"].endswith("/models/gemini-3.5-flash-lite:generateContent")
+
+
+def test_thinking_level_is_optional_and_validated():
+    seen = []
+
+    def post(url, payload, api_key):
+        seen.append(payload["generationConfig"])
+        return gemini_reply("pong")
+
+    run_check({**CONFIGURED, "GEMINI_THINKING_LEVEL": "low"}, post)
+    run_check({**CONFIGURED, "GEMINI_THINKING_LEVEL": "bogus"}, post)
+    assert seen[0]["thinkingConfig"] == {"thinkingLevel": "LOW"}
+    assert "thinkingConfig" not in seen[1]
+
+
+def test_thought_parts_are_not_the_answer():
+    body = {"candidates": [{"content": {"parts": [{"text": "thinking...", "thought": True}, {"text": "pong"}]}}]}
+    assert llm_client.reply_text(body) == "pong"
 
 
 def test_http_error_is_fail_and_redacts_the_key():
-    secret = "sk-test-secret-value"
-
     def post(url, payload, api_key):
-        raise RuntimeError(f"HTTP 401: invalid key {api_key}")
-
-    result = run_check({KEY_NAME: secret, MODEL_NAME: "gpt-4o-mini"}, post)
-    text = result.lines()
-    assert result.status == "FAIL"
-    assert result.exit_code() == 1
-    assert "status=PASS" not in text
-    assert secret not in text
-    assert "[redacted]" in result.error
-
-
-def test_empty_reply_is_fail():
-    def post(url, payload, api_key):
-        return {"choices": [{"message": {"content": "  "}}], "usage": {"total_tokens": 4}}
+        raise RuntimeError(f"HTTP 400: API key not valid {api_key}")
 
     result = run_check(CONFIGURED, post)
     assert result.status == "FAIL"
-    assert result.usage == "total_tokens=4"
+    assert result.exit_code() == 1
+    assert SECRET not in result.lines()
+    assert "[redacted]" in result.error
+
+
+def test_empty_reply_is_fail_with_reason():
+    blocked = {"promptFeedback": {"blockReason": "SAFETY"}}
+    result = run_check(CONFIGURED, lambda *args: blocked)
+    assert result.status == "FAIL"
+    assert "prompt blocked (SAFETY)" in result.error
+    truncated = run_check(CONFIGURED, lambda *args: gemini_reply("", finish="MAX_TOKENS"))
+    assert "finishReason=MAX_TOKENS" in truncated.error
 
 
 def test_main_skips_without_calling_the_network(monkeypatch, capsys):
@@ -109,32 +136,108 @@ def test_main_skips_without_calling_the_network(monkeypatch, capsys):
     def explode(*args):
         raise AssertionError("network was called")
 
-    monkeypatch.setattr(llm_ping, "_post_json", explode)
-    code = llm_ping.main()
-    output = capsys.readouterr().out
-    assert code == 2
-    assert "status=SKIPPED" in output
-    assert "status=PASS" not in output
+    monkeypatch.setattr(llm_client, "post_json", explode)
+    monkeypatch.setattr(llm_client, "get_json", explode)
+    assert llm_ping.main([]) == 2
+    assert "status=SKIPPED" in capsys.readouterr().out
+    assert llm_ping.main(["--list-models"]) == 2
+    assert "status=SKIPPED" in capsys.readouterr().out
 
 
-def test_http_errors_name_auth_model_and_quota_without_the_key():
-    secret = "sk-test-secret-value"
-    auth = describe_http_error(401, '{"error":{"message":"bad key sk-test-secret-value","code":"invalid_api_key"}}', secret)
-    model = describe_http_error(404, '{"error":{"message":"The model does not exist","code":"model_not_found"}}', secret)
-    quota = describe_http_error(429, '{"error":{"message":"exceeded quota","code":"insufficient_quota"}}', secret)
-    assert auth.startswith("authentication failed")
-    assert model.startswith("invalid model")
-    assert quota.startswith("quota or rate limit")
-    assert secret not in auth + model + quota
+def test_list_models_filters_and_marks_configured():
+    pages = {
+        "": {"models": [
+            {"name": "models/gemini-3.5-flash-lite", "displayName": "Gemini 3.5 Flash-Lite", "supportedGenerationMethods": ["generateContent", "countTokens"]},
+            {"name": "models/text-embedding-x", "displayName": "Embedding", "supportedGenerationMethods": ["embedContent"]},
+        ], "nextPageToken": "p2"},
+        "p2": {"models": [
+            {"name": "models/gemini-3.6-flash", "displayName": "Gemini 3.6 Flash", "supportedGenerationMethods": ["generateContent"]},
+        ]},
+    }
+    urls = []
+
+    def get(url, key):
+        urls.append(url)
+        token = url.split("pageToken=")[1] if "pageToken=" in url else ""
+        return pages[token]
+
+    code, text = run_list_models({**CONFIGURED, MODEL_NAME: "gemini-3.6-flash"}, get)
+    assert code == 0
+    assert "models_available=2" in text
+    assert "gemini-3.5-flash-lite  (Gemini 3.5 Flash-Lite)  <- recommended" in text
+    assert "gemini-3.6-flash  (Gemini 3.6 Flash)  <- configured" in text
+    assert "embedding" not in text.lower()
+    assert len(urls) == 2
+    assert all(SECRET not in url for url in urls)
+
+
+def test_list_models_warns_about_unknown_configured_model():
+    code, text = run_list_models({**CONFIGURED, MODEL_NAME: "gemini-made-up"}, lambda url, key: {"models": []})
+    assert code == 0
+    assert "warning: GEMINI_MODEL=gemini-made-up is not in this list" in text
+
+
+def test_list_models_error_is_fail_without_key():
+    def get(url, key):
+        raise RuntimeError(f"authentication failed: {key}")
+
+    code, text = run_list_models(CONFIGURED, get)
+    assert code == 1
+    assert SECRET not in text
+
+
+@pytest.mark.parametrize(
+    "status,raw,prefix",
+    [
+        (400, '{"error":{"code":400,"message":"API key not valid. Please pass a valid API key.","status":"INVALID_ARGUMENT","details":[{"reason":"API_KEY_INVALID"}]}}', "authentication failed"),
+        (401, '{"error":{"code":"authentication","message":"The API key is missing, invalid, or expired."}}', "authentication failed"),
+        (403, '{"error":{"code":403,"message":"denied","status":"PERMISSION_DENIED"}}', "permission denied"),
+        (404, '{"error":{"code":404,"message":"models/x is not found","status":"NOT_FOUND"}}', "invalid model"),
+        (429, '{"error":{"code":429,"message":"Quota exceeded","status":"RESOURCE_EXHAUSTED"}}', "quota or rate limit"),
+        (503, '{"error":{"code":503,"message":"overloaded","status":"UNAVAILABLE"}}', "Gemini service error"),
+        (400, "not json", "HTTP 400"),
+    ],
+)
+def test_http_errors_are_labelled(status, raw, prefix):
+    assert describe_http_error(status, raw, SECRET).startswith(prefix)
+
+
+def test_error_text_redacts_key_shaped_values():
+    raw = '{"error":{"message":"bad key AIzaSyOTHER-key-value-abcdefghij in ?key=AIzaSyOTHER"}}'
+    message = describe_http_error(400, raw, SECRET)
+    assert "AIzaSyOTHER" not in message
+    assert "[redacted]" in message
 
 
 def test_network_error_hides_the_key(monkeypatch):
-    def raise_url(*args, **kwargs):
-        raise llm_ping.urllib.error.URLError("no route")
+    def raise_url(*args, **_kwargs):
+        raise llm_client.urllib.error.URLError("no route")
 
-    monkeypatch.setattr(llm_ping.urllib.request, "urlopen", raise_url)
+    monkeypatch.setattr(llm_client.urllib.request, "urlopen", raise_url)
     with pytest.raises(RuntimeError) as caught:
-        llm_ping._post_json(llm_ping.API_URL, {}, "sk-test-secret-value")
-    message = str(caught.value)
-    assert message == "network error: could not reach the OpenAI API"
-    assert "sk-test-secret-value" not in message
+        llm_client.post_json(llm_client.generate_url("gemini-3.5-flash-lite"), {}, SECRET)
+    assert str(caught.value) == "network error: could not reach the Gemini API"
+
+
+def test_key_is_sent_in_header_not_url(monkeypatch):
+    captured = {}
+
+    class FakeResponse:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def read(self):
+            return b'{"candidates": []}'
+
+    def fake_urlopen(request, timeout):
+        captured["url"] = request.full_url
+        captured["headers"] = {k.lower(): v for k, v in request.header_items()}
+        return FakeResponse()
+
+    monkeypatch.setattr(llm_client.urllib.request, "urlopen", fake_urlopen)
+    llm_client.post_json(llm_client.generate_url("gemini-3.5-flash-lite"), {}, SECRET)
+    assert SECRET not in captured["url"]
+    assert captured["headers"]["x-goog-api-key"] == SECRET
