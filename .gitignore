@@ -13,3 +13,6 @@ __pycache__/
 # Local databases
 *.db
 *.sqlite3
+
+# Private project reference documents (never commit)
+_project_references/
