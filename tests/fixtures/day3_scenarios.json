@@ -1,6 +1,6 @@
 {
-  "version": "day3-scenarios-v1",
-  "note": "mock_reply values are hand-written stand-ins for an LLM reply. They test QASeed's deterministic validation, not model accuracy. In live mode only 'scenario' and 'expected' are used.",
+  "version": "day3-scenarios-v2",
+  "note": "mock_reply values are hand-written stand-ins for an LLM reply. They test QASeed's deterministic validation, not model accuracy. In live mode only 'scenario' and 'expected' (or 'live_expected') are used. v2 (Day 4) adds the exact expected conditions to valid cases for the condition-coverage metric; outcomes are unchanged.",
   "scenarios": [
     {
       "id": "S01",
@@ -18,7 +18,7 @@
         "ambiguities": [],
         "unsupported": []
       },
-      "expected": {"status": "valid", "counts": {"customers": 50, "subscriptions": 50, "invoices": 50, "payments": 50}, "condition_count": 3}
+      "expected": {"status": "valid", "counts": {"customers": 50, "subscriptions": 50, "invoices": 50, "payments": 50}, "condition_count": 3, "conditions": [["subscriptions", "status", "canceled", 10], ["invoices", "status", "overdue", 8], ["payments", "status", "failed", 5]]}
     },
     {
       "id": "S02",
@@ -30,7 +30,7 @@
         "conditions": [{"table": "subscriptions", "column": "status", "value": "active", "count": 20}],
         "assumptions": [], "ambiguities": [], "unsupported": []
       },
-      "expected": {"status": "valid", "counts": {"customers": 20, "subscriptions": 20}, "condition_count": 1}
+      "expected": {"status": "valid", "counts": {"customers": 20, "subscriptions": 20}, "condition_count": 1, "conditions": [["subscriptions", "status", "active", 20]]}
     },
     {
       "id": "S03",
@@ -42,7 +42,7 @@
         "conditions": [{"table": "subscriptions", "column": "status", "value": "canceled", "count": 5}],
         "assumptions": ["'cancelled' mapped to 'canceled'."], "ambiguities": [], "unsupported": []
       },
-      "expected": {"status": "valid", "counts": {"customers": 15, "subscriptions": 15}, "condition_count": 1}
+      "expected": {"status": "valid", "counts": {"customers": 15, "subscriptions": 15}, "condition_count": 1, "conditions": [["subscriptions", "status", "canceled", 5]]}
     },
     {
       "id": "S04",
@@ -57,7 +57,7 @@
         ],
         "assumptions": [], "ambiguities": [], "unsupported": []
       },
-      "expected": {"status": "valid", "counts": {"customers": 12, "subscriptions": 12, "invoices": 12, "payments": 12}, "condition_count": 2}
+      "expected": {"status": "valid", "counts": {"customers": 12, "subscriptions": 12, "invoices": 12, "payments": 12}, "condition_count": 2, "conditions": [["payments", "status", "failed", 4], ["payments", "status", "succeeded", 8]]}
     },
     {
       "id": "S05",
@@ -72,7 +72,7 @@
         ],
         "assumptions": [], "ambiguities": [], "unsupported": []
       },
-      "expected": {"status": "valid", "counts": {"customers": 30, "subscriptions": 30, "invoices": 30}, "condition_count": 2}
+      "expected": {"status": "valid", "counts": {"customers": 30, "subscriptions": 30, "invoices": 30}, "condition_count": 2, "conditions": [["invoices", "status", "overdue", 6], ["invoices", "status", "void", 4]]}
     },
     {
       "id": "S06",
@@ -84,7 +84,7 @@
         "conditions": [],
         "assumptions": ["2 per customer = 20 subscriptions; 3 per subscription = 60 invoices."], "ambiguities": [], "unsupported": []
       },
-      "expected": {"status": "valid", "counts": {"customers": 10, "subscriptions": 20, "invoices": 60}, "condition_count": 0}
+      "expected": {"status": "valid", "counts": {"customers": 10, "subscriptions": 20, "invoices": 60}, "condition_count": 0, "conditions": []}
     },
     {
       "id": "S07",
@@ -100,7 +100,7 @@
         ],
         "assumptions": ["'the rest' = 15 active."], "ambiguities": [], "unsupported": []
       },
-      "expected": {"status": "valid", "counts": {"customers": 25, "subscriptions": 25}, "condition_count": 3}
+      "expected": {"status": "valid", "counts": {"customers": 25, "subscriptions": 25}, "condition_count": 3, "conditions": [["subscriptions", "status", "trialing", 5], ["subscriptions", "status", "past_due", 5], ["subscriptions", "status", "active", 15]]}
     },
     {
       "id": "S08",
@@ -199,7 +199,7 @@
       "scenario": "Generate 5 customers with active subscriptions.",
       "mock_reply": "Sure! Here are 5 customers: Alice, Bob, ...",
       "expected": {"status": "rejected", "issue_codes": ["malformed_llm_output"]},
-      "live_expected": {"status": "valid", "counts": {"customers": 5, "subscriptions": 5}, "condition_count": 1}
+      "live_expected": {"status": "valid", "counts": {"customers": 5, "subscriptions": 5}, "condition_count": 1, "conditions": [["subscriptions", "status", "active", 5]]}
     },
     {
       "id": "S18",

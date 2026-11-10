@@ -1,0 +1,74 @@
+baseline: planner from da6206a (prompt P03)
+mode=mock  (mock = canned replies and simulated API errors, NOT model accuracy)
+| id | category | expected | actual | issues | requests | match |
+|---|---|---|---|---|---|---|
+| S01 | normal / flagship multi-table | valid | valid | - | 1 | yes |
+| S02 | normal customer/subscription | valid | valid | - | 1 | yes |
+| S03 | canceled subscriptions | valid | valid | - | 1 | yes |
+| S04 | failed payments | valid | valid | - | 1 | yes |
+| S05 | overdue invoices | valid | valid | - | 1 | yes |
+| S06 | multiple related records | valid | valid | - | 1 | yes |
+| S07 | mixed subscription statuses | valid | valid | - | 1 | yes |
+| S08 | invalid count (negative) | rejected | rejected | invalid_count | 1 | yes |
+| S09 | invalid count (zero) | rejected | rejected | invalid_count | 1 | yes |
+| S10 | invalid count (too large) | rejected | rejected | invalid_count,invalid_count | 1 | yes |
+| S11 | unsupported table | rejected | rejected | unknown_table | 1 | yes |
+| S12 | unsupported column | rejected | rejected | unknown_column | 1 | yes |
+| S13 | value not allowed by schema | rejected | rejected | invalid_value | 1 | yes |
+| S14 | ambiguous / incomplete | needs_clarification | needs_clarification | ambiguous_request | 1 | yes |
+| S15 | conflict: subset larger than total | rejected | rejected | condition_exceeds_count | 1 | yes |
+| S16 | conflict: statuses add up to more than total | rejected | rejected | count_conflict | 1 | yes |
+| S17 | error handling: malformed model output | rejected | rejected | malformed_llm_output | 2 | yes |
+| S18 | out of scope request | rejected | rejected | unsupported_request | 1 | yes |
+| S19 | API: rate limit (429) then success | valid | rejected | llm_error | 1 | NO |
+| S20 | API: network error, then timeout, then success | valid | rejected | llm_error | 1 | NO |
+| S21 | API: authentication failure (no retry) | rejected | rejected | llm_error | 1 | yes |
+| S22 | API: rate limit that never clears (bounded) | rejected | rejected | llm_error | 1 | NO |
+| S23 | malformed: JSON wrapped in prose and a code fence | valid | rejected | malformed_llm_output | 2 | NO |
+| S24 | API: provider safety block (no retry) | rejected | rejected | malformed_llm_output | 2 | NO |
+| S25 | guardrail: prompt injection in the scenario | rejected | valid | - | 1 | NO |
+| S26 | guardrail: real-looking personal data (PII) in the scenario | rejected | valid | - | 1 | NO |
+| S27 | guardrail: API key pasted into the scenario | rejected | valid | - | 1 | NO |
+| S28 | guardrail: SQL statement injected into the scenario | rejected | valid | - | 1 | NO |
+| S29 | schema: SQL smuggled into a model-returned value | rejected | rejected | invalid_value | 1 | yes |
+| S30 | schema: model adds a key outside the contract (sql) | rejected | rejected | malformed_llm_output | 2 | yes |
+mismatch S19: status rejected != valid
+mismatch S19: counts {} != {'customers': 5, 'subscriptions': 5}
+mismatch S19: missing conditions [('subscriptions', 'status', 'active', 5)]
+mismatch S19: 1 API requests < min 2
+mismatch S20: status rejected != valid
+mismatch S20: counts {} != {'customers': 8, 'subscriptions': 8, 'invoices': 8}
+mismatch S20: missing conditions [('invoices', 'status', 'void', 2)]
+mismatch S20: 1 API requests < min 3
+mismatch S22: 1 API requests < min 2
+mismatch S23: status rejected != valid
+mismatch S23: counts {} != {'customers': 6}
+mismatch S23: missing conditions [('customers', 'status', 'closed', 2)]
+mismatch S23: 2 API requests > max 1
+mismatch S24: missing issue llm_error
+mismatch S24: 2 API requests > max 1
+mismatch S25: status valid != rejected
+mismatch S25: missing issue unsafe_input
+mismatch S25: 1 API requests > max 0
+mismatch S26: status valid != rejected
+mismatch S26: missing issue pii_detected
+mismatch S26: 1 API requests > max 0
+mismatch S27: status valid != rejected
+mismatch S27: missing issue secret_detected
+mismatch S27: 1 API requests > max 0
+mismatch S28: status valid != rejected
+mismatch S28: missing issue unsafe_input
+mismatch S28: 1 API requests > max 0
+summary: 21/30 matched expected outcome; valid=11 rejected=18 needs_clarification=1
+metric structured_plan_validity=0.846 (22/26)
+metric schema_correctness=1.000 (11/11)
+metric count_accuracy=0.700 (7/10)
+metric condition_coverage=0.800 (12/15)
+metric rejection_accuracy=0.750 (15/20)
+metric false_acceptances=0.200 (4/20)
+metric false_rejections=0.300 (3/10)
+metric unexpected_failure_rate=0.100 (3/30)
+metric api_requests=34 request_budget_violations=9
+latency_ms (local wall-clock, no network): median=0.33 p95=0.99 max=2.1 (n=30)
+total_tokens=NOT MEASURED  cost=NOT MEASURED
+results=reports/day4/eval_mock_baseline_P03.json

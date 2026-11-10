@@ -17,7 +17,7 @@ Date: 2026-11-09 · Branch: `day3/agent-planning` · Status: plan written before
 
 ## 2. Confirmed Day 3 requirements
 
-Official DDS Progress Workbook (found locally at `..\Senait Geb - DDS_Building_AI_Challenge_Progress_Workbook_Days2-8.docx`, read-only) — Day 3 "Building the Brain of Your App" checklist:
+Official DDS Progress Workbook (read locally from the gitignored `_project_references/` folder, read-only) — Day 3 "Building the Brain of Your App" checklist:
 
 1. Core logic implemented (model/prompt/workflow).
 2. Data ingestion or API integration expanded beyond hello world.

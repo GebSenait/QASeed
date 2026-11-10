@@ -1,0 +1,49 @@
+mode=mock  (mock = canned replies and simulated API errors, NOT model accuracy)
+| id | category | expected | actual | issues | requests | match |
+|---|---|---|---|---|---|---|
+| S01 | normal / flagship multi-table | valid | valid | - | 1 | yes |
+| S02 | normal customer/subscription | valid | valid | - | 1 | yes |
+| S03 | canceled subscriptions | valid | valid | - | 1 | yes |
+| S04 | failed payments | valid | valid | - | 1 | yes |
+| S05 | overdue invoices | valid | valid | - | 1 | yes |
+| S06 | multiple related records | valid | valid | - | 1 | yes |
+| S07 | mixed subscription statuses | valid | valid | - | 1 | yes |
+| S08 | invalid count (negative) | rejected | rejected | invalid_count | 1 | yes |
+| S09 | invalid count (zero) | rejected | rejected | invalid_count | 1 | yes |
+| S10 | invalid count (too large) | rejected | rejected | invalid_count,invalid_count | 1 | yes |
+| S11 | unsupported table | rejected | rejected | unknown_table | 1 | yes |
+| S12 | unsupported column | rejected | rejected | unknown_column | 1 | yes |
+| S13 | value not allowed by schema | rejected | rejected | invalid_value | 1 | yes |
+| S14 | ambiguous / incomplete | needs_clarification | needs_clarification | ambiguous_request | 1 | yes |
+| S15 | conflict: subset larger than total | rejected | rejected | condition_exceeds_count | 1 | yes |
+| S16 | conflict: statuses add up to more than total | rejected | rejected | count_conflict | 1 | yes |
+| S17 | error handling: malformed model output | rejected | rejected | malformed_llm_output | 2 | yes |
+| S18 | out of scope request | rejected | rejected | unsupported_request | 1 | yes |
+| S19 | API: rate limit (429) then success | valid | valid | - | 2 | yes |
+| S20 | API: network error, then timeout, then success | valid | valid | - | 3 | yes |
+| S21 | API: authentication failure (no retry) | rejected | rejected | llm_error | 1 | yes |
+| S22 | API: rate limit that never clears (bounded) | rejected | rejected | llm_error | 3 | yes |
+| S23 | malformed: JSON wrapped in prose and a code fence | valid | valid | - | 1 | yes |
+| S24 | API: provider safety block (no retry) | rejected | rejected | llm_error | 1 | yes |
+| S25 | guardrail: prompt injection in the scenario | rejected | rejected | unsafe_input | 0 | yes |
+| S26 | guardrail: real-looking personal data (PII) in the scenario | rejected | rejected | pii_detected | 0 | yes |
+| S27 | guardrail: API key pasted into the scenario | rejected | rejected | secret_detected | 0 | yes |
+| S28 | guardrail: SQL statement injected into the scenario | rejected | rejected | unsafe_input | 0 | yes |
+| S29 | schema: SQL smuggled into a model-returned value | rejected | rejected | invalid_value | 1 | yes |
+| S30 | schema: model adds a key outside the contract (sql) | rejected | rejected | malformed_llm_output | 2 | yes |
+retry S19: rate_limit -> recovered
+retry S20: network,timeout -> recovered
+retry S22: rate_limit,rate_limit -> ended with rate_limit
+summary: 30/30 matched expected outcome; valid=10 rejected=19 needs_clarification=1
+metric structured_plan_validity=0.913 (21/23)
+metric schema_correctness=1.000 (10/10)
+metric count_accuracy=1.000 (10/10)
+metric condition_coverage=1.000 (15/15)
+metric rejection_accuracy=1.000 (20/20)
+metric false_acceptances=0.000 (0/20)
+metric false_rejections=0.000 (0/10)
+metric unexpected_failure_rate=0.000 (0/30)
+metric api_requests=33 request_budget_violations=0
+latency_ms (local wall-clock, no network): median=0.29 p95=0.86 max=4.41 (n=30)
+total_tokens=NOT MEASURED  cost=NOT MEASURED
+results=reports/day4/eval_mock_revised_P04.json
