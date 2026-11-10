@@ -13,6 +13,7 @@ redacted from every error message this module produces.
 
 from __future__ import annotations
 
+import http.client
 import json
 import re
 import socket
@@ -28,6 +29,26 @@ THINKING_NAME = "GEMINI_THINKING_LEVEL"
 RECOMMENDED_MODEL = "gemini-3.5-flash-lite"
 THINKING_LEVELS = ("minimal", "low", "medium", "high")
 TIMEOUT_SECONDS = 60
+
+# Error kinds. Retryable ones are worth another request after a pause;
+# the rest fail fast because repeating the same request cannot succeed.
+RETRYABLE_KINDS = frozenset({"rate_limit", "server", "timeout", "network", "bad_response"})
+ERROR_KINDS = RETRYABLE_KINDS | {"auth", "permission", "invalid_model", "bad_request", "blocked"}
+MAX_RETRY_AFTER_SECONDS = 60.0
+
+
+class LLMError(RuntimeError):
+    """A Gemini call failed. str(error) is safe to show: it never contains the key."""
+
+    def __init__(self, kind: str, message: str, retry_after: float | None = None) -> None:
+        super().__init__(message)
+        self.kind = kind if kind in ERROR_KINDS else "bad_response"
+        self.retry_after = retry_after
+
+    @property
+    def retryable(self) -> bool:
+        return self.kind in RETRYABLE_KINDS
+
 
 _SECRET_RE = re.compile(r"AIza[0-9A-Za-z_\-]{10,}|(x-goog-api-key:?\s*)\S+|([?&]key=)[^&\s]+", re.IGNORECASE)
 
@@ -137,6 +158,20 @@ def empty_reply_reason(body: dict) -> str:
     return "no candidates returned"
 
 
+BLOCK_FINISH_REASONS = ("SAFETY", "PROHIBITED_CONTENT", "BLOCKLIST", "SPII", "RECITATION")
+
+
+def blocked_reason(body: dict) -> str:
+    """Non-empty when the provider refused the prompt or the answer for safety/policy reasons."""
+    if not isinstance(body, dict):
+        return ""
+    feedback = body.get("promptFeedback")
+    if isinstance(feedback, dict) and feedback.get("blockReason"):
+        return f"prompt blocked: {feedback['blockReason']}"
+    reason = finish_reason(body)
+    return f"finishReason={reason}" if reason in BLOCK_FINISH_REASONS else ""
+
+
 def finish_reason(body: dict) -> str:
     candidates = body.get("candidates") if isinstance(body, dict) else None
     if isinstance(candidates, list) and candidates and isinstance(candidates[0], dict):
@@ -159,7 +194,15 @@ def usage_text(body: dict) -> str:
 def describe_http_error(status: int, raw: str, key: str) -> str:
     """Turn an HTTP error body into a short labelled message without the key."""
     code, message = _error_parts(raw, key)
-    return f"{_error_kind(status, code, message)}: {message}"
+    return f"{_error_label(_error_kind(status, code, message), status)}: {message}"
+
+
+def http_error(status: int, raw: str, key: str, retry_after_header: str | None = None) -> LLMError:
+    """Classify an HTTP error response as an LLMError (kind, safe message, retry hint)."""
+    code, message = _error_parts(raw, key)
+    kind = _error_kind(status, code, message)
+    retry_after = _parse_seconds(retry_after_header) if retry_after_header else _retry_delay(raw)
+    return LLMError(kind, f"{_error_label(kind, status)}: {message}", retry_after)
 
 
 def public_text(text: str, secret: str) -> str:
@@ -181,17 +224,22 @@ def _send(request: urllib.request.Request, key: str) -> dict:
             raw = response.read().decode("utf-8")
     except urllib.error.HTTPError as exc:
         raw = exc.read().decode("utf-8", errors="replace")
-        raise RuntimeError(describe_http_error(exc.code, raw, key)) from None
+        header = exc.headers.get("Retry-After") if exc.headers else None
+        raise http_error(exc.code, raw, key, header) from None
     except (TimeoutError, socket.timeout):
-        raise RuntimeError("network error: request timed out") from None
-    except urllib.error.URLError:
-        raise RuntimeError("network error: could not reach the Gemini API") from None
+        raise LLMError("timeout", "network error: request timed out") from None
+    except urllib.error.URLError as exc:
+        if isinstance(exc.reason, (TimeoutError, socket.timeout)):
+            raise LLMError("timeout", "network error: request timed out") from None
+        raise LLMError("network", "network error: could not reach the Gemini API") from None
+    except (http.client.HTTPException, ConnectionError, OSError):
+        raise LLMError("network", "network error: the connection to the Gemini API was interrupted") from None
     try:
         body = json.loads(raw)
     except json.JSONDecodeError:
-        raise RuntimeError("Gemini returned a response that was not JSON") from None
+        raise LLMError("bad_response", "Gemini returned a response that was not JSON") from None
     if not isinstance(body, dict):
-        raise RuntimeError("Gemini returned an unexpected response")
+        raise LLMError("bad_response", "Gemini returned an unexpected response")
     return body
 
 
@@ -218,13 +266,42 @@ def _error_parts(raw: str, key: str) -> tuple[str, str]:
 def _error_kind(status: int, code: str, message: str) -> str:
     blob = f"{code} {message}".lower()
     if status in (401,) or any(w in blob for w in ("api_key_invalid", "api key not valid", "authentication", "unauthenticated")):
-        return "authentication failed (check GEMINI_API_KEY)"
+        return "auth"
     if status == 403 or "permission_denied" in blob:
-        return "permission denied (key or project cannot use this model)"
+        return "permission"
     if status == 404 or any(w in blob for w in ("not_found", "model_not_found", "is not found")):
-        return "invalid model (check GEMINI_MODEL with --list-models)"
+        return "invalid_model"
     if status == 429 or any(w in blob for w in ("resource_exhausted", "quota", "rate_limit", "too_many_requests")):
-        return "quota or rate limit (free-tier limit reached; wait and retry)"
-    if status >= 500:
-        return f"Gemini service error (HTTP {status}; retry later)"
-    return f"HTTP {status}"
+        return "rate_limit"
+    if status >= 500 or status == 408:
+        return "server"
+    return "bad_request"
+
+
+def _error_label(kind: str, status: int) -> str:
+    return {
+        "auth": "authentication failed (check GEMINI_API_KEY)",
+        "permission": "permission denied (key or project cannot use this model)",
+        "invalid_model": "invalid model (check GEMINI_MODEL with --list-models)",
+        "rate_limit": "quota or rate limit (free-tier limit reached; wait and retry)",
+        "server": f"Gemini service error (HTTP {status}; retry later)",
+    }.get(kind, f"HTTP {status}")
+
+
+def _parse_seconds(text: str) -> float | None:
+    """'17', '17s' or '1.5s' -> seconds (capped). Anything else -> None."""
+    match = re.fullmatch(r"\s*(\d+(?:\.\d+)?)\s*s?\s*", text or "")
+    return min(float(match.group(1)), MAX_RETRY_AFTER_SECONDS) if match else None
+
+
+def _retry_delay(raw: str) -> float | None:
+    """Read google.rpc.RetryInfo.retryDelay from an error body, if present."""
+    try:
+        body = json.loads(raw)
+    except json.JSONDecodeError:
+        return None
+    details = body.get("error", {}).get("details", []) if isinstance(body, dict) and isinstance(body.get("error"), dict) else []
+    for detail in details if isinstance(details, list) else []:
+        if isinstance(detail, dict) and isinstance(detail.get("retryDelay"), str):
+            return _parse_seconds(detail["retryDelay"])
+    return None
