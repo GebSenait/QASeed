@@ -49,24 +49,28 @@ Quick runs without a report are still fine: `python -m pytest -q`.
 3. **No live API calls in pytest.** Tests use mock `post`/`get` functions and fake keys (`AIzaSyTEST…`). Live Gemini checks are run separately (`python -m qaseed.llm_ping`, `python -m qaseed.evaluate --live`) and recorded as LIVE evidence, never mixed into the mock results.
 4. **Generate a report at least once per day,** at the end of the day's work and before any commit you plan to show as evidence.
 5. **Keep reports honest.** Do not edit report files by hand. A failing run stays in `index.md`; fix the problem and run again, so the history shows both.
-6. **No secrets in reports.** Report metadata shows only the Gemini *model ID*, branch and commit, never the key. Before committing reports, check: `git grep -n "AIza" -- reports` should print nothing except fake `AIzaSyTEST` values (normally nothing at all).
+6. **No secrets or personal details in reports.** Never print absolute local paths (they contain the account name); `test_layout.py` checks this. Report metadata shows only the Gemini *model ID*, branch and commit, never the key. Before committing reports, check: `git grep -n "AIza" -- reports` should print nothing except fake `AIzaSyTEST` values (normally nothing at all).
 7. **Reports are evidence.** `reports/` is tracked by Git, so the DDS workbook can link to a report. Commit the final report of each day; delete scratch reports from the same day first if you don't want them public, and update `index.md` to match.
 
 ## What the reports cover
 
 | Test file | Covers |
 |---|---|
-| `test_layout.py` | Project files, `.gitignore` rules, module-test rule |
+| `test_layout.py` | Project files, `.gitignore` rules, module-test rule, no local account names/paths in README, docs or reports |
 | `test_config.py` | Paths and `.env` loading |
 | `test_schema.py` | SQLite schema, foreign keys, allowed values |
-| `test_llm_client.py` | Gemini request/response helpers, errors, key redaction |
+| `test_llm_client.py` | Gemini request/response helpers, typed errors (kind, retryable, Retry-After), key redaction |
 | `test_llm_ping.py` | Connectivity check and `--list-models` (mocked) |
 | `test_plan_models.py` | Pydantic plan contract |
 | `test_plan_validator.py` | Deterministic plan validation |
-| `test_planner.py` | Planner flow with 18 mock scenarios, retries, prompt P02 |
-| `test_evaluate.py` | Scenario evaluation runner |
+| `test_planner.py` | Planner flow with 18 mock scenarios, malformed-output and transport retries, backoff, request cap, prompts P02–P04 |
+| `test_guardrails.py` | Injection / SQL / PII / secret detection, false-positive check on core scenarios, free-text caps |
+| `test_evaluate.py` | Evaluation runner: sets, scripted API errors, metrics, JSON results |
+| `test_generator.py` | Seeded generator: exact conditions, links, status-driven dates, reproducibility, CLI |
+| `test_data_checks.py` | Independent data checks, each proven to catch a deliberately broken database |
 | `test_app.py` | Streamlit app renders without errors (headless) |
 | `test_report_script.py` | Daily report helper |
+| `test_day4_baseline.py` | Day 4 baseline replay (Day 3 planner loaded from Git) |
 
 ## Saving live model results next to the day's report (optional)
 
