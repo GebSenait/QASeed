@@ -28,6 +28,7 @@ GITIGNORE_RULES = (
     ".streamlit/secrets.toml",
     "*.db",
     "*.sqlite3",
+    "_project_references/",
 )
 
 
@@ -81,3 +82,30 @@ def test_every_module_has_its_own_test_file():
     modules.append(ROOT / "app.py")
     missing = [f"tests/test_{path.stem}.py" for path in modules if not (ROOT / "tests" / f"test_{path.stem}.py").is_file()]
     assert missing == []
+
+
+def _local_identifiers() -> list[str]:
+    """This machine's account and home-folder names, read at test time (nothing hard-coded)."""
+    import getpass
+    from pathlib import Path
+
+    names = {getpass.getuser(), Path.home().name}
+    return sorted(name for name in names if name and len(name) >= 4)
+
+
+def test_published_files_do_not_contain_local_user_names_or_paths():
+    """Docs, README and reports are pushed to GitHub: no account names or home-folder paths."""
+    from pathlib import Path
+
+    home = str(Path.home())
+    targets = [ROOT / "README.md", *(ROOT / "docs").rglob("*"), *(ROOT / "reports").rglob("*")]
+    leaks = []
+    for path in targets:
+        if not path.is_file():
+            continue
+        text = path.read_text(encoding="utf-8", errors="ignore")
+        lowered = text.lower()
+        if home.lower() in lowered or home.replace("\\", "\\\\").lower() in lowered:
+            leaks.append(f"{path.relative_to(ROOT)}: home folder path")
+        leaks += [f"{path.relative_to(ROOT)}: account name" for name in _local_identifiers() if name.lower() in lowered]
+    assert leaks == []

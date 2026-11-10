@@ -174,7 +174,7 @@ Command: `python -m qaseed.evaluate --live` (all 18 scenarios) · model `gemini-
 
 ## 2. DDS workbook evidence (Day 3 page, ready to paste after review)
 
-Official workbook found locally (`..\Senait Geb - DDS_Building_AI_Challenge_Progress_Workbook_Days2-8.docx`, read only, not modified). Day 3 checklist:
+Official DDS Progress Workbook read locally (gitignored `_project_references/`; read only, not modified). Day 3 checklist:
 
 - ☑ Core logic implemented (model/prompt/workflow): planner + prompt P01 + deterministic validation.
 - ☑ API integration expanded beyond hello world: live Gemini planner calls return structured JSON plans.

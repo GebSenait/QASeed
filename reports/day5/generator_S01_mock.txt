@@ -1,0 +1,46 @@
+== S01
+scenario: Generate 50 customers, including 10 canceled subscriptions, 8 overdue invoices, and 5 failed payments.
+plan: status=valid source=mock  (source=mock means a hand-written AI reply, not a live model)
+generated: seed=42 as_of=2026-11-11 rows={'customers': 50, 'subscriptions': 50, 'invoices': 50, 'payments': 50}
+| requested | generated | verified |
+|---|---|---|
+| customers rows: 50 | 50 | PASS |
+| subscriptions rows (derived): 50 | 50 | PASS |
+| invoices rows (derived): 50 | 50 | PASS |
+| payments rows (derived): 50 | 50 | PASS |
+| subscriptions.status = canceled: 10 | 10 | PASS |
+| invoices.status = overdue: 8 | 8 | PASS |
+| payments.status = failed: 5 | 5 | PASS |
+checks:
+  PASS  foreign-key enforcement is on (1) (expected 1, actual 1)
+  PASS  customers has exactly 50 rows (expected 50, actual 50)
+  PASS  subscriptions has exactly 50 rows (expected 50, actual 50)
+  PASS  invoices has exactly 50 rows (expected 50, actual 50)
+  PASS  payments has exactly 50 rows (expected 50, actual 50)
+  PASS  exactly 10 subscriptions rows have status = 'canceled' (expected 10, actual 10)
+  PASS  exactly 8 invoices rows have status = 'overdue' (expected 8, actual 8)
+  PASS  exactly 5 payments rows have status = 'failed' (expected 5, actual 5)
+  PASS  0 subscriptions rows whose customer_id has no matching customers.customer_id (expected 0, actual 0)
+  PASS  0 invoices rows whose subscription_id has no matching subscriptions.subscription_id (expected 0, actual 0)
+  PASS  0 payments rows whose invoice_id has no matching invoices.invoice_id (expected 0, actual 0)
+  PASS  0 duplicate customers.email values (expected 0, actual 0)
+  PASS  0 duplicate invoices.invoice_number values (expected 0, actual 0)
+  PASS  0 rows reported by SQLite PRAGMA foreign_key_check (expected 0, actual 0)
+  PASS  0 customers created after the as-of date (expected 0, actual 0)
+  PASS  0 subscriptions where canceled status and cancel date disagree (expected 0, actual 0)
+  PASS  0 subscriptions canceled before they started or after the as-of date (expected 0, actual 0)
+  PASS  0 subscriptions starting before their customer was created (expected 0, actual 0)
+  PASS  0 invoices due before they were issued (expected 0, actual 0)
+  PASS  0 overdue invoices that are not yet past due (expected 0, actual 0)
+  PASS  0 open invoices that are already past due (expected 0, actual 0)
+  PASS  0 invoices issued before their subscription started (expected 0, actual 0)
+  PASS  0 payments attempted before their invoice was issued or after the as-of date (expected 0, actual 0)
+S01: 23/23 checks passed -> PASS
+  sample customers: {'customer_id': 1, 'email': 'allison.hill.1@example.com', 'display_name': 'Allison Hill', 'country_code': 'GR', 'status': 'active', 'created_on': '2025-12-19'}
+  sample customers: {'customer_id': 2, 'email': 'brian.yang.2@example.com', 'display_name': 'Brian Yang', 'country_code': 'ST', 'status': 'active', 'created_on': '2025-04-03'}
+  sample subscriptions: {'subscription_id': 1, 'customer_id': 1, 'plan_name': 'Team', 'status': 'active', 'monthly_price_cents': 4900, 'started_on': '2025-12-21', 'canceled_on': None}
+  sample subscriptions: {'subscription_id': 2, 'customer_id': 2, 'plan_name': 'Starter', 'status': 'active', 'monthly_price_cents': 1900, 'started_on': '2025-05-19', 'canceled_on': None}
+  sample invoices: {'invoice_id': 1, 'subscription_id': 1, 'invoice_number': 'INV-202609-000001', 'amount_cents': 4900, 'status': 'paid', 'issued_on': '2026-09-07', 'due_on': '2026-10-07'}
+  sample invoices: {'invoice_id': 2, 'subscription_id': 2, 'invoice_number': 'INV-202608-000002', 'amount_cents': 1900, 'status': 'paid', 'issued_on': '2026-08-17', 'due_on': '2026-09-16'}
+  sample payments: {'payment_id': 1, 'invoice_id': 1, 'amount_cents': 4900, 'status': 'succeeded', 'attempted_on': '2026-09-10'}
+  sample payments: {'payment_id': 2, 'invoice_id': 2, 'amount_cents': 1900, 'status': 'succeeded', 'attempted_on': '2026-08-19'}
