@@ -64,6 +64,9 @@ IssueCode = Literal[
     "ambiguous_request",
     "unsupported_request",
     "no_tables",
+    "unsafe_input",
+    "pii_detected",
+    "secret_detected",
 ]
 
 
@@ -105,7 +108,11 @@ class VerificationCheck(_Strict):
 class PlanMetadata(_Strict):
     model: str = ""
     prompt_id: str = ""
-    attempts: int = 0
+    attempts: int = 0  # model replies received
+    requests: int = 0  # API requests sent (includes transport retries)
+    transport_retries: int = 0
+    retried_errors: list[str] = Field(default_factory=list)  # kind of each error that triggered a retry, kept even if the retry succeeded
+    error_kind: str = ""  # kind of the error that ended the run, e.g. rate_limit, auth, blocked; "" if a reply arrived
     latency_ms: int | None = None
     usage: str = ""
 

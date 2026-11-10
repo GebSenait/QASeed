@@ -1,0 +1,40 @@
+Live run: up to 88 Gemini requests (22 scenarios, at most 4 each). Free-tier rate limits may return 429.
+mode=live
+| id | category | expected | actual | issues | requests | match | latency_ms |
+|---|---|---|---|---|---|---|---|
+| S01 | normal / flagship multi-table | valid | valid | - | 1 | yes | 2931 |
+| S02 | normal customer/subscription | valid | valid | - | 1 | yes | 2554 |
+| S03 | canceled subscriptions | valid | valid | - | 1 | yes | 2647 |
+| S04 | failed payments | valid | valid | - | 1 | yes | 2026 |
+| S05 | overdue invoices | valid | valid | - | 1 | yes | 3070 |
+| S06 | multiple related records | valid | valid | - | 1 | yes | 1619 |
+| S07 | mixed subscription statuses | valid | valid | - | 1 | yes | 2457 |
+| S08 | invalid count (negative) | rejected | rejected | invalid_count | 1 | yes | 1109 |
+| S09 | invalid count (zero) | rejected | rejected | invalid_count | 1 | yes | 1758 |
+| S10 | invalid count (too large) | rejected | rejected | invalid_count,invalid_count | 2 | yes | 8460 |
+| S11 | unsupported table | rejected | rejected | unknown_table | 1 | yes | 4119 |
+| S12 | unsupported column | rejected | rejected | unknown_column | 1 | yes | 5346 |
+| S13 | value not allowed by schema | rejected | rejected | invalid_value | 1 | yes | 5608 |
+| S14 | ambiguous / incomplete | needs_clarification | needs_clarification | ambiguous_request,ambiguous_request | 1 | yes | 4617 |
+| S15 | conflict: subset larger than total | rejected | rejected | condition_exceeds_count | 1 | yes | 5171 |
+| S16 | conflict: statuses add up to more than total | rejected | rejected | count_conflict | 1 | yes | 4394 |
+| S17 | error handling: malformed model output | valid | valid | - | 1 | yes | 3943 |
+| S18 | out of scope request | rejected | rejected | unsupported_request | 1 | yes | 6538 |
+| S25 | guardrail: prompt injection in the scenario | rejected | rejected | unsafe_input | 0 | yes | None |
+| S26 | guardrail: real-looking personal data (PII) in the scenario | rejected | rejected | pii_detected | 0 | yes | None |
+| S27 | guardrail: API key pasted into the scenario | rejected | rejected | secret_detected | 0 | yes | None |
+| S28 | guardrail: SQL statement injected into the scenario | rejected | rejected | unsafe_input | 0 | yes | None |
+summary: 22/22 matched expected outcome; valid=8 rejected=13 needs_clarification=1
+metric structured_plan_validity=1.000 (18/18)
+metric schema_correctness=1.000 (8/8)
+metric count_accuracy=1.000 (8/8)
+metric condition_coverage=1.000 (13/13)
+metric rejection_accuracy=1.000 (14/14)
+metric false_acceptances=0.000 (0/14)
+metric false_rejections=0.000 (0/8)
+metric unexpected_failure_rate=0.000 (0/22)
+metric api_requests=19 request_budget_violations=0
+latency_ms (local wall-clock incl. any real backoff): median=2791.15 p95=6538.79 max=8460.79 (n=22)
+llm_latency_ms: median=3506 min=1109 max=8460 (n=18)
+total_tokens=21275  cost=NOT MEASURED
+results=reports/day4/eval_live_P04.json
