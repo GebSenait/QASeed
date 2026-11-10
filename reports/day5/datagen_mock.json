@@ -1,0 +1,316 @@
+{
+  "seed": 42,
+  "as_of": "2026-11-11",
+  "runs": [
+    {
+      "id": "S01",
+      "scenario": "Generate 50 customers, including 10 canceled subscriptions, 8 overdue invoices, and 5 failed payments.",
+      "source": "mock",
+      "seed": 42,
+      "as_of": "2026-11-11",
+      "rows": {
+        "customers": 50,
+        "subscriptions": 50,
+        "invoices": 50,
+        "payments": 50
+      },
+      "checks_passed": 23,
+      "checks_total": 23,
+      "coverage": [
+        {
+          "what": "customers rows",
+          "requested": 50,
+          "generated": 50,
+          "verified": true
+        },
+        {
+          "what": "subscriptions rows (derived)",
+          "requested": 50,
+          "generated": 50,
+          "verified": true
+        },
+        {
+          "what": "invoices rows (derived)",
+          "requested": 50,
+          "generated": 50,
+          "verified": true
+        },
+        {
+          "what": "payments rows (derived)",
+          "requested": 50,
+          "generated": 50,
+          "verified": true
+        },
+        {
+          "what": "subscriptions.status = canceled",
+          "requested": 10,
+          "generated": 10,
+          "verified": true
+        },
+        {
+          "what": "invoices.status = overdue",
+          "requested": 8,
+          "generated": 8,
+          "verified": true
+        },
+        {
+          "what": "payments.status = failed",
+          "requested": 5,
+          "generated": 5,
+          "verified": true
+        }
+      ],
+      "failed": []
+    },
+    {
+      "id": "S02",
+      "scenario": "Create 20 customers, each with one active subscription.",
+      "source": "mock",
+      "seed": 42,
+      "as_of": "2026-11-11",
+      "rows": {
+        "customers": 20,
+        "subscriptions": 20
+      },
+      "checks_passed": 11,
+      "checks_total": 11,
+      "coverage": [
+        {
+          "what": "customers rows",
+          "requested": 20,
+          "generated": 20,
+          "verified": true
+        },
+        {
+          "what": "subscriptions rows",
+          "requested": 20,
+          "generated": 20,
+          "verified": true
+        },
+        {
+          "what": "subscriptions.status = active",
+          "requested": 20,
+          "generated": 20,
+          "verified": true
+        }
+      ],
+      "failed": []
+    },
+    {
+      "id": "S03",
+      "scenario": "I need 15 subscriptions, 5 of them cancelled.",
+      "source": "mock",
+      "seed": 42,
+      "as_of": "2026-11-11",
+      "rows": {
+        "customers": 15,
+        "subscriptions": 15
+      },
+      "checks_passed": 11,
+      "checks_total": 11,
+      "coverage": [
+        {
+          "what": "customers rows (derived)",
+          "requested": 15,
+          "generated": 15,
+          "verified": true
+        },
+        {
+          "what": "subscriptions rows",
+          "requested": 15,
+          "generated": 15,
+          "verified": true
+        },
+        {
+          "what": "subscriptions.status = canceled",
+          "requested": 5,
+          "generated": 5,
+          "verified": true
+        }
+      ],
+      "failed": []
+    },
+    {
+      "id": "S04",
+      "scenario": "Give me 12 payments: 4 failed and 8 succeeded.",
+      "source": "mock",
+      "seed": 42,
+      "as_of": "2026-11-11",
+      "rows": {
+        "customers": 12,
+        "subscriptions": 12,
+        "invoices": 12,
+        "payments": 12
+      },
+      "checks_passed": 22,
+      "checks_total": 22,
+      "coverage": [
+        {
+          "what": "customers rows (derived)",
+          "requested": 12,
+          "generated": 12,
+          "verified": true
+        },
+        {
+          "what": "subscriptions rows (derived)",
+          "requested": 12,
+          "generated": 12,
+          "verified": true
+        },
+        {
+          "what": "invoices rows (derived)",
+          "requested": 12,
+          "generated": 12,
+          "verified": true
+        },
+        {
+          "what": "payments rows",
+          "requested": 12,
+          "generated": 12,
+          "verified": true
+        },
+        {
+          "what": "payments.status = failed",
+          "requested": 4,
+          "generated": 4,
+          "verified": true
+        },
+        {
+          "what": "payments.status = succeeded",
+          "requested": 8,
+          "generated": 8,
+          "verified": true
+        }
+      ],
+      "failed": []
+    },
+    {
+      "id": "S05",
+      "scenario": "30 invoices where 6 are overdue and 4 are void.",
+      "source": "mock",
+      "seed": 42,
+      "as_of": "2026-11-11",
+      "rows": {
+        "customers": 30,
+        "subscriptions": 30,
+        "invoices": 30
+      },
+      "checks_passed": 19,
+      "checks_total": 19,
+      "coverage": [
+        {
+          "what": "customers rows (derived)",
+          "requested": 30,
+          "generated": 30,
+          "verified": true
+        },
+        {
+          "what": "subscriptions rows (derived)",
+          "requested": 30,
+          "generated": 30,
+          "verified": true
+        },
+        {
+          "what": "invoices rows",
+          "requested": 30,
+          "generated": 30,
+          "verified": true
+        },
+        {
+          "what": "invoices.status = overdue",
+          "requested": 6,
+          "generated": 6,
+          "verified": true
+        },
+        {
+          "what": "invoices.status = void",
+          "requested": 4,
+          "generated": 4,
+          "verified": true
+        }
+      ],
+      "failed": []
+    },
+    {
+      "id": "S06",
+      "scenario": "10 customers, each with 2 subscriptions, and 3 invoices per subscription.",
+      "source": "mock",
+      "seed": 42,
+      "as_of": "2026-11-11",
+      "rows": {
+        "customers": 10,
+        "subscriptions": 20,
+        "invoices": 60
+      },
+      "checks_passed": 17,
+      "checks_total": 17,
+      "coverage": [
+        {
+          "what": "customers rows",
+          "requested": 10,
+          "generated": 10,
+          "verified": true
+        },
+        {
+          "what": "subscriptions rows",
+          "requested": 20,
+          "generated": 20,
+          "verified": true
+        },
+        {
+          "what": "invoices rows",
+          "requested": 60,
+          "generated": 60,
+          "verified": true
+        }
+      ],
+      "failed": []
+    },
+    {
+      "id": "S07",
+      "scenario": "25 subscriptions: 5 trialing, 5 past due, the rest active.",
+      "source": "mock",
+      "seed": 42,
+      "as_of": "2026-11-11",
+      "rows": {
+        "customers": 25,
+        "subscriptions": 25
+      },
+      "checks_passed": 13,
+      "checks_total": 13,
+      "coverage": [
+        {
+          "what": "customers rows (derived)",
+          "requested": 25,
+          "generated": 25,
+          "verified": true
+        },
+        {
+          "what": "subscriptions rows",
+          "requested": 25,
+          "generated": 25,
+          "verified": true
+        },
+        {
+          "what": "subscriptions.status = trialing",
+          "requested": 5,
+          "generated": 5,
+          "verified": true
+        },
+        {
+          "what": "subscriptions.status = past_due",
+          "requested": 5,
+          "generated": 5,
+          "verified": true
+        },
+        {
+          "what": "subscriptions.status = active",
+          "requested": 15,
+          "generated": 15,
+          "verified": true
+        }
+      ],
+      "failed": []
+    }
+  ]
+}
