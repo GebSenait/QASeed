@@ -15,6 +15,11 @@ How rows are made (deterministic for a given seed, as-of date and Faker version)
   succeeded), never another requested value.
 - Dates follow the status: an overdue invoice is past its due date, an open
   one is not, a canceled subscription has a cancel date and nothing else does.
+- Payments and invoices tell one story (Day 5): a succeeded payment belongs
+  to a paid invoice; a failed or pending payment belongs to an unpaid (open
+  or overdue) invoice. If the plan fixes invoice statuses, payments are
+  linked to matching invoices; if it does not, an invoice whose payments all
+  failed becomes "open". A plan that makes this impossible is refused.
 - Values come from Faker (names, country codes); emails use the reserved
   example.com domain, so they can never belong to a real person.
 
@@ -45,6 +50,8 @@ from qaseed.schema import load_schema
 DEFAULT_SEED = 42
 INVOICE_TERMS_DAYS = 30
 PLAN_PRICES_CENTS = {"Starter": 1900, "Team": 4900, "Business": 9900}
+UNPAID_INVOICE_STATUSES = ("open", "overdue")
+UNPAID_DEFAULT = "open"  # status given to an unconstrained invoice whose payments all failed
 # Status given to rows the scenario did not ask for: the "healthy" default.
 NORMAL_VALUES = {
     ("customers", "status"): "active",
@@ -114,11 +121,13 @@ def generate(
     fake.seed_instance(seed)
     counts = plan.counts()
 
+    values = {name: _column_values(plan, tables[name], counts[name], rng) for name in plan.generation_order}
+    if "payments" in values and "invoices" in values:
+        _link_payments(plan, values["invoices"], values["payments"])
     rows: dict[str, list[dict]] = {}
     for name in plan.generation_order:
-        values = _column_values(plan, tables[name], counts[name], rng)
         builder = _BUILDERS[name]
-        rows[name] = [builder(i, values, rows, rng, fake, as_of) for i in range(counts[name])]
+        rows[name] = [builder(i, values[name], rows, rng, fake, as_of) for i in range(counts[name])]
 
     engine = create_database(path)
     try:
@@ -169,6 +178,40 @@ def _column_values(plan: ScenarioPlan, table: dict, total: int, rng: random.Rand
         rng.shuffle(values)
         result[column] = values
     return result
+
+
+def _link_payments(plan: ScenarioPlan, invoices: dict[str, list[str]], payments: dict[str, list[str]]) -> None:
+    """Choose each payment's invoice so payment and invoice statuses agree.
+
+    Adds payments["invoice_index"] and, when the plan does not fix invoice
+    statuses, updates invoices["status"] in place.
+    """
+    invoice_status, payment_status = invoices["status"], payments["status"]
+    fixed = any(c.table == "invoices" and c.column == "status" for c in plan.conditions)
+    if not fixed:
+        links = [j % len(invoice_status) for j in range(len(payment_status))]
+        for k in range(len(invoice_status)):
+            mine = [payment_status[j] for j, link in enumerate(links) if link == k]
+            if mine:
+                invoice_status[k] = "paid" if "succeeded" in mine else UNPAID_DEFAULT
+        payments["invoice_index"] = links
+        return
+    paid = [k for k, s in enumerate(invoice_status) if s == "paid"]
+    unpaid = [k for k, s in enumerate(invoice_status) if s in UNPAID_INVOICE_STATUSES]
+    ok = [j for j, s in enumerate(payment_status) if s == "succeeded"]
+    bad = [j for j, s in enumerate(payment_status) if s != "succeeded"]
+    if ok and not paid:
+        raise GenerationError(f"{len(ok)} succeeded payments need a paid invoice, but the plan leaves no invoice paid.")
+    if bad and not unpaid:
+        raise GenerationError(
+            f"{len(bad)} failed or pending payments need an unpaid (open or overdue) invoice, but the plan has none."
+        )
+    links = [0] * len(payment_status)
+    for n, j in enumerate(ok):
+        links[j] = paid[n % len(paid)]
+    for n, j in enumerate(bad):
+        links[j] = unpaid[n % len(unpaid)]
+    payments["invoice_index"] = links
 
 
 # ---- one builder per table ---------------------------------------------------
@@ -224,7 +267,8 @@ def _invoice(i, values, rows, rng, fake, as_of):
 
 
 def _payment(i, values, rows, rng, fake, as_of):
-    invoice = _parent(rows["invoices"], i)
+    links = values.get("invoice_index")
+    invoice = rows["invoices"][links[i]] if links else _parent(rows["invoices"], i)
     attempted = min(date.fromisoformat(invoice["issued_on"]) + timedelta(days=rng.randint(0, 10)), as_of)
     return {
         "payment_id": i + 1,

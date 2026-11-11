@@ -6,6 +6,8 @@ from qaseed.config import ROOT, SCHEMA_PATH, database_path
 REQUIRED_FILES = (
     "README.md",
     "requirements.txt",
+    "requirements-dev.txt",
+    "assets/brand/qaseed_logo.png",
     "app.py",
     ".gitignore",
     ".env.example",
@@ -15,6 +17,8 @@ REQUIRED_FILES = (
     "qaseed/schema.py",
     "qaseed/llm_ping.py",
     "qaseed/llm_client.py",
+    "qaseed/pipeline.py",
+    "qaseed/export.py",
 )
 
 GITIGNORE_RULES = (
@@ -73,7 +77,8 @@ def test_app_source_compiles():
     source = (ROOT / "app.py").read_text(encoding="utf-8")
     compile(source, "app.py", "exec")
     assert "streamlit" in source
-    assert "Scenario generation is not yet implemented." in source
+    assert "from qaseed import __version__, pipeline" in source  # Day 5: UI goes through the service layer
+    assert "Scenario generation is not yet implemented." not in source
 
 
 def test_every_module_has_its_own_test_file():

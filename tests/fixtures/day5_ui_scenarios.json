@@ -1,0 +1,64 @@
+{
+  "description": "Day 5 end-to-end UI scenarios. mock_reply is a recorded live model reply, replayed offline (source=mock).",
+  "scenarios": [
+    {
+      "id": "D5-01",
+      "category": "payment_story",
+      "scenario": "Generate 12 subscription payments: 8 successful and 4 failed. Each payment must have a valid invoice, subscription, and customer. Every failed invoice must remain unpaid, and every successful invoice must be paid.",
+      "mock_reply_source": "Recorded verbatim from the live Gemini run on 2026-11-11 (prompt P04, gemini-3.5-flash-lite) through the Streamlit app; see reports/day5/ui_e2e_payment_live.txt.",
+      "mock_reply": {
+        "status": "ok",
+        "tables": [
+          {
+            "table": "payments",
+            "count": 12
+          },
+          {
+            "table": "invoices",
+            "count": 12
+          },
+          {
+            "table": "subscriptions",
+            "count": null
+          },
+          {
+            "table": "customers",
+            "count": null
+          }
+        ],
+        "conditions": [
+          {
+            "table": "payments",
+            "column": "status",
+            "value": "succeeded",
+            "count": 8
+          },
+          {
+            "table": "payments",
+            "column": "status",
+            "value": "failed",
+            "count": 4
+          }
+        ],
+        "assumptions": [
+          "Generated 12 total payments split into 8 successful and 4 failed.",
+          "Ensured each payment maps to an invoice, subscription, and customer."
+        ],
+        "ambiguities": [],
+        "unsupported": []
+      },
+      "expected": {
+        "status": "valid",
+        "payments": {
+          "succeeded": 8,
+          "failed": 4
+        },
+        "invoice_for_succeeded": "paid",
+        "invoice_for_failed": [
+          "open",
+          "overdue"
+        ]
+      }
+    }
+  ]
+}

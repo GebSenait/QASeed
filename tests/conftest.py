@@ -35,6 +35,7 @@ def _configured_model() -> str:
 
 @pytest.hookimpl(trylast=True)
 def pytest_configure(config):
+    config.addinivalue_line("markers", "browser: real-browser test (Streamlit + headless Chromium via Playwright)")
     try:
         from pytest_metadata.plugin import metadata_key
     except ImportError:
