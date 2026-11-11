@@ -14,8 +14,8 @@
         "invoices": 50,
         "payments": 50
       },
-      "checks_passed": 23,
-      "checks_total": 23,
+      "checks_passed": 25,
+      "checks_total": 25,
       "coverage": [
         {
           "what": "customers rows",
@@ -142,8 +142,8 @@
         "invoices": 12,
         "payments": 12
       },
-      "checks_passed": 22,
-      "checks_total": 22,
+      "checks_passed": 24,
+      "checks_total": 24,
       "coverage": [
         {
           "what": "customers rows (derived)",
