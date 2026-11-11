@@ -1,8 +1,7 @@
-# Python 3.11+ (Streamlit 1.67 requires it)
+# Runtime dependencies for the QASeed app (Python 3.11+; Streamlit 1.67 requires it).
+# Streamlit Community Cloud installs this file. Development and test tools: requirements-dev.txt
 streamlit>=1.67,<2
-pytest>=9.2,<10
 python-dotenv>=1.2,<2
 pydantic>=2.7,<3
-pytest-html>=4.1,<5
 Faker>=40,<41
 SQLAlchemy>=2.0,<3

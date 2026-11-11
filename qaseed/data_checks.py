@@ -12,8 +12,11 @@ Three groups of checks:
    cancel date, overdue invoices are past due, open ones are not, nothing
    happens before its parent record or after the as-of date).
 
-Not checked yet: cross-table story rules such as "a failed payment belongs to
-an overdue invoice", and realism of names or amounts beyond the schema.
+4. Payment/invoice story (Day 5): an invoice with a succeeded payment is
+   paid; an invoice whose payments all failed or are pending stays unpaid
+   (open or overdue).
+
+Not checked yet: realism of names or amounts beyond the schema.
 """
 
 from __future__ import annotations
@@ -83,6 +86,13 @@ BUSINESS_RULES = [
      "SELECT COUNT(*) FROM invoices i JOIN subscriptions s ON s.subscription_id = i.subscription_id WHERE i.issued_on < s.started_on"),
     (("payments", "invoices"), "0 payments attempted before their invoice was issued or after the as-of date",
      "SELECT COUNT(*) FROM payments p JOIN invoices i ON i.invoice_id = p.invoice_id WHERE p.attempted_on < i.issued_on OR p.attempted_on > :as_of"),
+    (("payments", "invoices"), "0 invoices with a succeeded payment that are not paid",
+     "SELECT COUNT(DISTINCT i.invoice_id) FROM invoices i JOIN payments p ON p.invoice_id = i.invoice_id "
+     "WHERE p.status = 'succeeded' AND i.status <> 'paid'"),
+    (("payments", "invoices"), "0 invoices with only failed or pending payments that are not unpaid (open or overdue)",
+     "SELECT COUNT(*) FROM invoices i WHERE EXISTS (SELECT 1 FROM payments p WHERE p.invoice_id = i.invoice_id) "
+     "AND NOT EXISTS (SELECT 1 FROM payments p WHERE p.invoice_id = i.invoice_id AND p.status = 'succeeded') "
+     "AND i.status NOT IN ('open', 'overdue')"),
 ]
 
 

@@ -35,12 +35,14 @@ checks:
   PASS  0 open invoices that are already past due (expected 0, actual 0)
   PASS  0 invoices issued before their subscription started (expected 0, actual 0)
   PASS  0 payments attempted before their invoice was issued or after the as-of date (expected 0, actual 0)
-S01: 23/23 checks passed -> PASS
-  sample customers: {'customer_id': 1, 'email': 'allison.hill.1@example.com', 'display_name': 'Allison Hill', 'country_code': 'GR', 'status': 'active', 'created_on': '2025-12-19'}
-  sample customers: {'customer_id': 2, 'email': 'brian.yang.2@example.com', 'display_name': 'Brian Yang', 'country_code': 'ST', 'status': 'active', 'created_on': '2025-04-03'}
-  sample subscriptions: {'subscription_id': 1, 'customer_id': 1, 'plan_name': 'Team', 'status': 'active', 'monthly_price_cents': 4900, 'started_on': '2025-12-21', 'canceled_on': None}
-  sample subscriptions: {'subscription_id': 2, 'customer_id': 2, 'plan_name': 'Starter', 'status': 'active', 'monthly_price_cents': 1900, 'started_on': '2025-05-19', 'canceled_on': None}
-  sample invoices: {'invoice_id': 1, 'subscription_id': 1, 'invoice_number': 'INV-202609-000001', 'amount_cents': 4900, 'status': 'paid', 'issued_on': '2026-09-07', 'due_on': '2026-10-07'}
-  sample invoices: {'invoice_id': 2, 'subscription_id': 2, 'invoice_number': 'INV-202608-000002', 'amount_cents': 1900, 'status': 'paid', 'issued_on': '2026-08-17', 'due_on': '2026-09-16'}
-  sample payments: {'payment_id': 1, 'invoice_id': 1, 'amount_cents': 4900, 'status': 'succeeded', 'attempted_on': '2026-09-10'}
-  sample payments: {'payment_id': 2, 'invoice_id': 2, 'amount_cents': 1900, 'status': 'succeeded', 'attempted_on': '2026-08-19'}
+  PASS  0 invoices with a succeeded payment that are not paid (expected 0, actual 0)
+  PASS  0 invoices with only failed or pending payments that are not unpaid (open or overdue) (expected 0, actual 0)
+S01: 25/25 checks passed -> PASS
+  sample customers: {'customer_id': 1, 'email': 'allison.hill.1@example.com', 'display_name': 'Allison Hill', 'country_code': 'GR', 'status': 'active', 'created_on': '2025-02-01'}
+  sample customers: {'customer_id': 2, 'email': 'brian.yang.2@example.com', 'display_name': 'Brian Yang', 'country_code': 'ST', 'status': 'active', 'created_on': '2024-11-12'}
+  sample subscriptions: {'subscription_id': 1, 'customer_id': 1, 'plan_name': 'Team', 'status': 'active', 'monthly_price_cents': 4900, 'started_on': '2025-04-01', 'canceled_on': None}
+  sample subscriptions: {'subscription_id': 2, 'customer_id': 2, 'plan_name': 'Starter', 'status': 'active', 'monthly_price_cents': 1900, 'started_on': '2024-11-21', 'canceled_on': None}
+  sample invoices: {'invoice_id': 1, 'subscription_id': 1, 'invoice_number': 'INV-202608-000001', 'amount_cents': 4900, 'status': 'paid', 'issued_on': '2026-08-30', 'due_on': '2026-09-29'}
+  sample invoices: {'invoice_id': 2, 'subscription_id': 2, 'invoice_number': 'INV-202610-000002', 'amount_cents': 1900, 'status': 'paid', 'issued_on': '2026-10-06', 'due_on': '2026-11-05'}
+  sample payments: {'payment_id': 1, 'invoice_id': 1, 'amount_cents': 4900, 'status': 'succeeded', 'attempted_on': '2026-09-07'}
+  sample payments: {'payment_id': 2, 'invoice_id': 2, 'amount_cents': 1900, 'status': 'succeeded', 'attempted_on': '2026-10-12'}

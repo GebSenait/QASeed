@@ -1,0 +1,15 @@
+# QASeed look and feel (matches the LinkedIn graphics: near-black text, QASeed green, warm off-white).
+# No secrets here; secrets.toml in this folder stays gitignored.
+
+[theme]
+base = "light"
+primaryColor = "#1B813E"
+backgroundColor = "#F8F8F6"
+secondaryBackgroundColor = "#F0F0EC"
+textColor = "#16191B"
+borderColor = "#E3E3DD"
+font = "sans serif"
+baseRadius = "0.6rem"
+
+[client]
+toolbarMode = "minimal"  # hides the developer "Deploy" menu for demos

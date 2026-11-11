@@ -96,6 +96,10 @@ def test_duplicate_value_is_caught(flagship):
      "0 payments attempted before their invoice was issued or after the as-of date"),
     ("UPDATE customers SET created_on = '2099-01-01' WHERE customer_id = 1",
      "0 customers created after the as-of date"),
+    ("UPDATE invoices SET status = 'void' WHERE invoice_id = (SELECT MIN(invoice_id) FROM payments WHERE status = 'succeeded')",
+     "0 invoices with a succeeded payment that are not paid"),
+    ("UPDATE invoices SET status = 'paid' WHERE invoice_id = (SELECT MIN(invoice_id) FROM payments WHERE status = 'failed')",
+     "0 invoices with only failed or pending payments that are not unpaid (open or overdue)"),
 ])
 def test_business_rule_violations_are_caught(flagship, sql, rule):
     plan, dataset = flagship

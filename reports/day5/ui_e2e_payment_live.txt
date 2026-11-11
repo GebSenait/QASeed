@@ -1,0 +1,72 @@
+scenario: Generate 12 subscription payments: 8 successful and 4 failed. Each payment must have a valid invoice, subscription, and customer. Every failed invoice must remain unpaid, and every successful invoice must be paid.
+mode=live plan_status=valid source=llm requests=1 model_latency_ms=6251 usage=promptTokenCount=1069 candidatesTokenCount=250 totalTokenCount=1319
+model reply (raw):
+  {
+  "status": "ok",
+  "tables": [
+    {
+      "table": "payments",
+      "count": 12
+    },
+    {
+      "table": "invoices",
+      "count": 12
+    },
+    {
+      "table": "subscriptions",
+      "count": null
+    },
+    {
+      "table": "customers",
+      "count": null
+    }
+  ],
+  "conditions": [
+    {
+      "table": "payments",
+      "column": "status",
+      "value": "succeeded",
+      "count": 8
+    },
+    {
+      "table": "payments",
+      "column": "status",
+      "value": "failed",
+      "count": 4
+    }
+  ],
+  "assumptions": [
+    "Generated 12 total payments split into 8 successful and 4 failed.",
+    "Ensured each payment maps to an invoice, subscription, and customer."
+  ],
+  "ambiguities": [],
+  "unsupported": []
+}
+plan tables: customers=12 (derived), subscriptions=12 (derived), invoices=12 (stated), payments=12 (stated)
+plan conditions: payments.status=succeeded x8, payments.status=failed x4
+assumption: Generated 12 total payments split into 8 successful and 4 failed.
+assumption: Ensured each payment maps to an invoice, subscription, and customer.
+assumption: subscriptions count not stated; assuming one subscription per invoice (12).
+assumption: customers count not stated; assuming one customer per subscription (12).
+ui metrics: Rows generated=48, Data checks passed=24/24, Seed=42, Time=303 ms
+| requested vs generated | requested | generated | verified |
+|---|---|---|---|
+| customers rows (derived) | 12 | 12 | PASS |
+| subscriptions rows (derived) | 12 | 12 | PASS |
+| invoices rows | 12 | 12 | PASS |
+| payments rows | 12 | 12 | PASS |
+| payments.status = succeeded | 8 | 8 | PASS |
+| payments.status = failed | 4 | 4 | PASS |
+download buttons: ['Download CSV files + validation report (ZIP)']
+downloaded ZIP checks (independent of the app):
+  PASS  ZIP holds the 4 table CSVs + validation_report.json  [customers.csv, subscriptions.csv, invoices.csv, payments.csv, validation_report.json]
+  PASS  customers: 12 rows, unique customer_id
+  PASS  subscriptions: 12 rows, unique subscription_id
+  PASS  invoices: 12 rows, unique invoice_id
+  PASS  payments: 12 rows, unique payment_id
+  PASS  every payment -> invoice -> subscription -> customer link resolves  [12/12]
+  PASS  payment statuses as requested  [{'failed': 4, 'succeeded': 8}]
+  PASS  every succeeded payment's invoice is paid  [Counter({'paid': 8})]
+  PASS  every failed payment's invoice is unpaid (open/overdue)  [Counter({'open': 4})]
+  PASS  validation report says every check passed  [24/24]
+result=PASS

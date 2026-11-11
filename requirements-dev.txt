@@ -1,0 +1,6 @@
+# Development and test tools (local only): python -m pip install -r requirements-dev.txt
+-r requirements.txt
+pytest>=9.2,<10
+pytest-html>=4.1,<5
+# Headless browser UI tests (after install: python -m playwright install chromium)
+playwright>=1.65,<2

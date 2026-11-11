@@ -1,6 +1,6 @@
 # QASeed — Testing and Daily Test Reports (Days 3–8)
 
-Tools: **pytest** (test runner) + **pytest-html** (standalone HTML report with pass/fail details, durations, timestamps and environment metadata). Both are in `requirements.txt`.
+Tools: **pytest** (test runner) + **pytest-html** (standalone HTML report with pass/fail details, durations, timestamps and environment metadata). Both are in `requirements-dev.txt` (with Playwright for the browser tests); the app itself only needs `requirements.txt`.
 
 ## Folder layout
 
@@ -66,11 +66,15 @@ Quick runs without a report are still fine: `python -m pytest -q`.
 | `test_planner.py` | Planner flow with 18 mock scenarios, malformed-output and transport retries, backoff, request cap, prompts P02–P04 |
 | `test_guardrails.py` | Injection / SQL / PII / secret detection, false-positive check on core scenarios, free-text caps |
 | `test_evaluate.py` | Evaluation runner: sets, scripted API errors, metrics, JSON results |
-| `test_generator.py` | Seeded generator: exact conditions, links, status-driven dates, reproducibility, CLI |
+| `test_generator.py` | Seeded generator: exact conditions, links, status-driven dates, payment/invoice status story, reproducibility, CLI |
 | `test_data_checks.py` | Independent data checks, each proven to catch a deliberately broken database |
-| `test_app.py` | Streamlit app renders without errors (headless) |
+| `test_pipeline.py` | UI service layer: offline/live/no-key/API-error planning, generation, export gating, validation report, safe logging |
+| `test_export.py` | CSV ZIP export: files, record counts, columns, IDs, cross-file foreign keys, requested conditions, reload into a fresh DB, tamper detection (SQL export is post-MVP) |
+| `test_app.py` | Streamlit journeys (headless AppTest): success with CSV download, invalid scenario, no key, API errors, duplicate clicks, stale plan, reset |
+| `test_browser_smoke.py` | Real browser (Playwright + headless Chromium) against the running Streamlit server, no API key: brand and mode, payment example to a verified CSV ZIP download, rejected example. Skip with `-m "not browser"`; setup `python -m playwright install chromium` |
 | `test_report_script.py` | Daily report helper |
 | `test_day4_baseline.py` | Day 4 baseline replay (Day 3 planner loaded from Git) |
+| `test_day5_ui_e2e.py` | `scripts/day5_ui_e2e.py`: app clicked through headless with the payment scenario (offline), live mode needs `--confirm`, ZIP check catches a failed payment on a paid invoice |
 
 ## Saving live model results next to the day's report (optional)
 

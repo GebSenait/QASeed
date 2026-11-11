@@ -167,3 +167,50 @@ def test_cli_replace_never_deletes_other_file_types(tmp_path, capsys):
     assert generator.main(["--sample", "0", "--db", str(target), "--replace"]) == 2
     assert "left untouched" in capsys.readouterr().out
     assert target.read_text(encoding="utf-8") == "keep me"
+
+
+# ---- payment / invoice story (Day 5) -------------------------------------------
+
+
+def _payment_story(dataset):
+    return rows(dataset, "SELECT p.status AS payment, i.status AS invoice FROM payments p JOIN invoices i USING (invoice_id)")
+
+
+def test_free_invoice_statuses_follow_their_payments():
+    """S04: 12 payments (8 succeeded, 4 failed), invoice statuses not requested."""
+    dataset = generate(mock_plan("S04"), seed=42, as_of=AS_OF)
+    try:
+        story = _payment_story(dataset)
+        assert len(story) == 12
+        assert {r["invoice"] for r in story if r["payment"] == "succeeded"} == {"paid"}
+        assert {r["invoice"] for r in story if r["payment"] == "failed"} == {"open"}
+        assert scalar(dataset, "SELECT COUNT(*) FROM invoices WHERE status = 'paid'") == 8
+        assert scalar(dataset, "SELECT COUNT(DISTINCT invoice_id) FROM payments") == 12  # one invoice per payment
+    finally:
+        dataset.close()
+
+
+def test_fixed_invoice_statuses_get_matching_payments(flagship):
+    """S01: 8 overdue invoices are requested; the 5 failed payments are linked to unpaid ones."""
+    story = _payment_story(flagship)
+    assert {r["invoice"] for r in story if r["payment"] == "failed"} <= {"open", "overdue"}
+    assert {r["invoice"] for r in story if r["payment"] == "succeeded"} == {"paid"}
+    assert scalar(flagship, "SELECT COUNT(*) FROM invoices WHERE status = 'overdue'") == 8  # request still exact
+
+
+def _with_invoice_condition(value, count):
+    plan = mock_plan("S04")  # 12 invoices, 8 succeeded + 4 failed payments
+    plan.conditions.append(plan.conditions[0].model_copy(update={"table": "invoices", "value": value, "count": count}))
+    return plan
+
+
+def test_failed_payments_without_any_unpaid_invoice_are_refused():
+    plan = _with_invoice_condition("paid", 12)
+    with pytest.raises(GenerationError, match="failed or pending payments need an unpaid"):
+        generate(plan, as_of=AS_OF)
+
+
+def test_succeeded_payments_without_any_paid_invoice_are_refused():
+    plan = _with_invoice_condition("overdue", 12)
+    with pytest.raises(GenerationError, match="succeeded payments need a paid invoice"):
+        generate(plan, as_of=AS_OF)

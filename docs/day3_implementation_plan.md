@@ -31,7 +31,7 @@ Day 1 scope: schema-aware planning that turns "10 canceled subscriptions" into g
 
 ## 3. Architecture components relevant to Day 3
 
-Target architecture (diagram inspected visually): User Input → Streamlit Interface → AI Agent Layer (Planner Agent (LLM) → Generation Orchestrator → Validation & Repair Agent, with a retry/repair loop) → Tooling Layer (Schema Parser, Data Generator (Faker + rules), Constraint Validator (SQLAlchemy/Python), Export Service) → Data Layer (sample SaaS schema in SQLite, generated dataset) → Outputs (validated test data, validation report, SQL/CSV). Core flow: Scenario → Plan → Generate → Validate → Repair → Export.
+Target architecture (diagram inspected visually): User Input → Streamlit Interface → AI Agent Layer (Planner Agent (LLM) → Generation Orchestrator → Validation & Repair Agent, with a retry/repair loop) → Tooling Layer (Schema Parser, Data Generator (Faker + rules), Constraint Validator (SQLAlchemy/Python), Export Service) → Data Layer (sample SaaS schema in SQLite, generated dataset) → Outputs (validated test data, validation report, SQL/CSV). *(Day 5 scope update: the MVP exports CSV only; SQL export is a planned post-MVP enhancement.)* Core flow: Scenario → Plan → Generate → Validate → Repair → Export.
 
 Day 3 builds only:
 
