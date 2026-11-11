@@ -10,21 +10,14 @@ A random data generator gives you rows. QASeed gives you the exact business cond
 
 ## Try it
 
-| | |
-|---|---|
-| **Live app** | **https://&lt;your-app-name&gt;.streamlit.app** · deployed from the `main` branch on Streamlit Community Cloud *(link added after deployment)* |
-| **Run locally** | `streamlit run app.py` (see [Run locally](#run-locally)) |
+Start the app with `streamlit run app.py` (setup in [Run locally](#run-locally)), then take the 60-second tour:
 
-**60-second tour (no sign-in, no setup):**
-
-1. Open the app. It starts in **Ready-made examples** mode (instant, no API calls).
+1. In the sidebar, choose **Ready-made examples** (instant, no API calls).
 2. Choose **D5-01** in *Ready-made examples* (12 payments: 8 succeeded, 4 failed) → **Plan scenario**.
 3. Review the AI plan → **Generate & validate data** → every check passes and *requested = actual*.
 4. **Download** the CSV files (ZIP) or the validation report (JSON).
 5. Try **S16**: an invalid request is blocked with one clear line before any data is created.
-6. Optional: switch to **Live AI** and type your own scenario (Gemini; 3 plans per visitor).
-
-The free app sleeps when idle: if you see a wake-up screen, click it and wait about 30 seconds.
+6. Optional: switch to **Live AI** and type your own scenario (Gemini; 3 plans per session).
 
 ## Features
 
@@ -93,39 +86,16 @@ The app alone needs only `requirements.txt`; `requirements-dev.txt` adds pytest,
 
 Without a key, live commands print `status=SKIPPED` and make no API call. A skip is not a pass. "Mock" results use recorded AI replies to test QASeed's own logic; "live" results call the real model.
 
-## Deploy (Streamlit Community Cloud, free)
-
-The public app is deployed from the **`main`** branch.
-
-1. Merge the feature branch into `main` and push to GitHub (the repository must be public for anyone to open the app).
-2. Sign in at https://share.streamlit.io with GitHub → **Create app** → repository **QASeed**, branch **`main`**, main file **`app.py`**; under *Advanced settings* choose Python 3.12.
-3. In the app's **Secrets** box (never in the repository), add:
-
-   ```toml
-   GEMINI_API_KEY = "<your key>"
-   GEMINI_MODEL = "gemini-3.5-flash-lite"
-   QASEED_DEFAULT_MODE = "offline"          # visitors start with ready-made examples
-   QASEED_LIVE_PLANS_PER_SESSION = "3"      # Live AI plans per visitor
-   QASEED_LIVE_PLANS_PER_DAY = "40"         # Live AI plans per day, all visitors
-   ```
-
-4. In the app's **Settings → Sharing**, make sure anyone with the link can view it, then open the link in a private window to confirm.
-5. Smoke-test the public URL (ready-made examples only, no API call):
-   `QASEED_BASE_URL=https://<your-app-name>.streamlit.app python -m pytest -m browser tests/test_browser_smoke.py`
-6. Replace the placeholder link in [Try it](#try-it) with the real URL.
-
-The cloud installs only `requirements.txt`. Every push to `main` redeploys the app.
-
 ## Configuration
 
 | Setting | Where | Default | Purpose |
 |---|---|---|---|
-| `GEMINI_API_KEY` | `.env` / Secrets | – | Gemini key for Live AI (never committed; redacted from all output) |
-| `GEMINI_MODEL` | `.env` / Secrets | – | Model ID, e.g. `gemini-3.5-flash-lite` |
-| `GEMINI_THINKING_LEVEL` | `.env` / Secrets | model default | Optional: `minimal`, `low`, `medium` or `high` |
-| `QASEED_DEFAULT_MODE` | `.env` / Secrets | `live` if a key is set | `offline` starts visitors in Ready-made examples mode |
-| `QASEED_LIVE_PLANS_PER_SESSION` | `.env` / Secrets | `3` | Live AI plans per visitor session |
-| `QASEED_LIVE_PLANS_PER_DAY` | `.env` / Secrets | `40` | Live AI plans per day across all visitors |
+| `GEMINI_API_KEY` | `.env` | – | Gemini key for Live AI (never committed; redacted from all output) |
+| `GEMINI_MODEL` | `.env` | – | Model ID, e.g. `gemini-3.5-flash-lite` |
+| `GEMINI_THINKING_LEVEL` | `.env` | model default | Optional: `minimal`, `low`, `medium` or `high` |
+| `QASEED_DEFAULT_MODE` | `.env` | `live` if a key is set | `offline` starts in Ready-made examples mode |
+| `QASEED_LIVE_PLANS_PER_SESSION` | `.env` | `3` | Live AI plans per session |
+| `QASEED_LIVE_PLANS_PER_DAY` | `.env` | `40` | Live AI plans per day across all sessions |
 | `QASEED_DB_PATH` | `.env` | `data/qaseed.db` | Local SQLite path for command-line runs |
 
 ## Progress
@@ -136,9 +106,9 @@ The cloud installs only `requirements.txt`. Every push to `main` redeploys the a
 | 2 | Environment, sample schema, schema viewer | ✅ Completed |
 | 3 | AI planner + schema validation, 18-scenario baseline | ✅ Completed |
 | 4 | Evaluation, error handling and retries, guardrails, prompt iteration | ✅ Completed |
-| 5 | Streamlit end-to-end UI, data generation + checks, CSV/JSON export, deployment prep | ✅ Completed |
+| 5 | Streamlit end-to-end UI, data generation + checks, CSV/JSON export | ✅ Completed |
 | 6 | Bounded repair, security review, bug fixes | ⏭️ Next phase |
-| 7 | Hosted smoke tests and hardening | ⏭️ Next phase |
+| 7 | Deployment and hosted smoke tests | ⏭️ Next phase |
 | 8 | Final submission and demo | ⏭️ Next phase |
 
 ## Results and test reports
@@ -181,7 +151,7 @@ Python · Streamlit · Google Gemini API · Pydantic · Faker · SQLAlchemy · S
 ## Safety
 
 - Synthetic data only; no production connections. Generated emails use the reserved `example.com` domain.
-- API keys live only in the local `.env` (gitignored) or the hosting platform's Secrets, and are redacted from all output.
+- API keys live only in the local `.env` (gitignored) and are redacted from all output.
 - Unsafe input (personal data, secrets, SQL, prompt injection) is refused before any API call.
 - Logs record status, counts and timings only, never scenario text, generated data or keys.
-- On a hosted app, Live AI is capped per visitor and per day to protect the free tier.
+- Live AI is capped per session and per day to protect the free tier.

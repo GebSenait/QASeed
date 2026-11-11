@@ -12,16 +12,16 @@ Date: 11 Nov 2026 · Branch: `feature/day5-ui-integration` (uncommitted, awaitin
 | 2 | Interface connected to backend/logic | **DONE** | `qaseed/pipeline.py` connects the app to planner, validator, generator, data checks and `qaseed/export.py`. **Verified live:** the payment scenario was planned by Gemini through the app and generated, checked and exported (1 API request). |
 | 3 | UX basics: loading, error states, reset/clear | **DONE** | Spinners; one-line, general error messages (e.g. “Bad request: status counts exceed the total.”, “AI service busy: try again in a minute.”); one-step examples; Reset; duplicate-click and stale-plan guards. |
 | 4 | Logging of inputs/outputs enabled (safe logging) | **DONE** | One `qaseed` log line per step: mode, sample id, scenario *length*, status, issue codes, requests, retries, error category, timings, row/check counts, export re-check result, ZIP size. Scenario text, generated values and the key are never logged; a redaction filter masks key/email/number shapes. |
-| 5 | Demo link created (even if rough) | **DONE (link pending upload)** | Live-take demo video recorded (82 s, 1920×1080 MP4, with the author's name on screen), kept outside the repo for upload. Hosted app prepared for Streamlit Community Cloud (see Bonus challenges); public URL pending the owner's deploy. |
+| 5 | Demo link created (even if rough) | **DONE (link pending upload)** | Live-take demo video recorded (82 s, 1920×1080 MP4, with the author's name on screen), kept outside the repo for upload. Hosted app: Day 7. |
 
 ## Workbook fields (ready to paste)
 
 | Field | Entry |
 |---|---|
 | **Interface tech** | Streamlit 1.67 (Python); tested headless with Streamlit AppTest and in a real browser with Playwright + Chromium |
-| **Demo link** | PASTE LINK to the uploaded demo video (LinkedIn / Loom / YouTube unlisted). Hosted app: PASTE the Streamlit Community Cloud URL after deploy. |
+| **Demo link** | PASTE LINK to the uploaded demo video (LinkedIn / Loom / YouTube unlisted). Hosted app: Day 7. |
 | **Screenshots link** | PASTE LINK to the folder with the 6 live-take screenshots (step 1 Describe, step 2 Review AI plan, step 3 Generate & validate, step 4 Download, flow complete, invalid request blocked). |
-| **Known UX issues to fix** | 1. Without Live AI, only the 19 ready-made examples can be planned. 2. A failed check blocks export, but there is no automatic repair yet (Day 6). 3. On phones the requested-vs-actual table scrolls sideways inside the table. 4. Export is CSV + JSON; SQL export is post-MVP. 5. A free hosted app sleeps when idle (first visit ≈30 s). |
+| **Known UX issues to fix** | 1. Without Live AI, only the 19 ready-made examples can be planned. 2. A failed check blocks export, but there is no automatic repair yet (Day 6). 3. On phones the requested-vs-actual table scrolls sideways inside the table. 4. Export is CSV + JSON; SQL export is post-MVP. |
 
 ### Decisions made today (why)
 
@@ -34,12 +34,12 @@ Date: 11 Nov 2026 · Branch: `feature/day5-ui-integration` (uncommitted, awaitin
 - **Log metadata, not content.** Scenario length and outcome are enough to debug; the text itself may hold customer details.
 - **A workflow that shows real progress.** The plan stays “in review” until data is generated; downloading completes the flow; Reset returns to a clean start.
 - **One-line, general error messages.** Invalid requests show one clear line; technical detail stays in the plan JSON for developers.
-- **Protect the free tier when hosted.** Live AI is capped per visitor (3) and per day (40), configurable; ready-made examples are never capped.
-- **Real-browser tests (Playwright).** The full journey is clicked through in Chromium locally, and the same tests can target the public URL.
+- **Protect the free tier.** Live AI is capped per session (3) and per day (40), configurable; ready-made examples are never capped.
+- **Real-browser tests (Playwright).** The full journey is clicked through in Chromium, which catches problems a headless logic test cannot.
 
 ### Blockers / help needed
 
-- No blockers. Deployment needs only the owner's GitHub push, Streamlit Cloud sign-in and the API key in its Secrets box.
+- No blockers. Deployment is scheduled for Day 7.
 - Live use stayed on the Gemini free tier (6 requests across 4 live plans on Day 5). Cost is not measured.
 
 ---
@@ -80,7 +80,7 @@ Video and 6 phase screenshots are kept outside the repository for upload (no key
 | Bonus | Status | Evidence |
 |---|---|---|
 | Add download/export features | **DONE** | CSV ZIP (4 tables + `validation_report.json`) and a separate **“Download validation report (JSON)”** button; the JSON is byte-identical to the report in the ZIP (browser test) |
-| UI deployment (free cloud) | **READY — owner deploys** | Streamlit Community Cloud: secrets read from the app's Secrets box; Live AI capped per visitor/day; logo tracked; app-only `requirements.txt`. Steps in [README › Deploy](../README.md). Smoke test for the public URL: `QASEED_BASE_URL=<url> python -m pytest -m browser tests/test_browser_smoke.py` |
+| UI deployment (free cloud) | **Deferred to Day 7** | Not part of Day 5 |
 
 ## Verified user journey (manual, browser, 11 Nov 2026)
 
@@ -130,7 +130,7 @@ No scenario text, generated values or key.
 | New / changed test file | Tests | Covers |
 |---|---|---|
 | `tests/test_app.py` | 53 (was 1) | All 8 valid examples end to end (plan → review → generate → verified → download → reset); every invalid example shows exactly one general line; tracker states; quick examples; connection status; About; live errors (mocked); Live AI caps; default mode |
-| `tests/test_browser_smoke.py` | 5 (new) | Real Chromium: brand + logo, payment example to verified ZIP and JSON downloads, one-line rejection, full tracker journey with download and reset, header visible with the sidebar collapsed; can target a deployed URL |
+| `tests/test_browser_smoke.py` | 5 (new) | Real Chromium: brand + logo, payment example to verified ZIP and JSON downloads, one-line rejection, full tracker journey with download and reset, header visible with the sidebar collapsed |
 | `tests/test_pipeline.py` | 29 | Planning in every mode, generation, validation report, export gating and re-check, JSON report, secrets loading, Live AI limits, daily counter, safe logging |
 | `tests/test_export.py` | 17 | ZIP contents, counts, columns, IDs, cross-file foreign keys, conditions, reload, tamper detection, no SQL export |
 | `tests/test_generator.py` | 27 (+4) | Payment/invoice story: free and fixed invoice statuses, impossible combinations refused |
@@ -147,7 +147,7 @@ Runtime (`requirements.txt`): no new packages. Development (`requirements-dev.tx
 ## Post-MVP enhancements (recorded, not built)
 
 - **SQL export:** `INSERT` script for the generated dataset, re-verified by loading it into a fresh database like the CSV export.
-- Automatic repair of failed checks (Day 6 scope); hosted-deployment smoke tests and hardening (Day 7 scope).
+- Automatic repair of failed checks (Day 6 scope); hosted deployment and smoke tests (Day 7 scope).
 
 ## Screenshots
 
