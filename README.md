@@ -12,7 +12,7 @@
 - [Quick Start](#quick-start)
 - [Testing & Reliability](#testing--reliability)
 - [Current Limitations & Roadmap](#current-limitations--roadmap)
-- [Author & License](#author--license)
+- [Author](#author)
 
 ## Overview
 
