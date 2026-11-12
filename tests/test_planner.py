@@ -18,7 +18,7 @@ from qaseed.planner import (
 )
 from qaseed.schema import load_schema
 
-SECRET = "AIzaSyTEST-not-a-real-key-0123456789abc"
+SECRET = "AIzaTEST-not-a-real-key-0000"
 ENV = {KEY_NAME: SECRET, MODEL_NAME: "gemini-3.5-flash-lite"}
 GENERATE_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent"
 SCENARIOS = load_scenarios()

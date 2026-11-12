@@ -7,7 +7,7 @@ import qaseed.llm_ping as llm_ping
 from qaseed.llm_client import KEY_NAME, MODEL_NAME, describe_http_error
 from qaseed.llm_ping import PROMPT, run_check, run_list_models
 
-SECRET = "AIzaSyTEST-not-a-real-key-0123456789abc"
+SECRET = "AIzaTEST-not-a-real-key-0000"
 CONFIGURED = {KEY_NAME: SECRET, MODEL_NAME: "gemini-3.5-flash-lite"}
 
 

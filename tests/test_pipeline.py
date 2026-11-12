@@ -16,7 +16,7 @@ from qaseed.llm_client import KEY_NAME, MODEL_NAME
 from qaseed.pipeline import PipelineError, find_sample, llm_status, plan_request, run_generation, sample_scenarios
 
 AS_OF = date(2026, 11, 11)
-FAKE_KEY = "AIzaSyTEST_pipeline_key_0000000000000"
+FAKE_KEY = "AIzaTEST_pipeline_key_0000"
 ENV = {KEY_NAME: FAKE_KEY, MODEL_NAME: "gemini-test"}
 S01 = next(c for c in load_scenarios() if c["id"] == "S01")
 PAYMENT_SCENARIO = load_scenarios(pipeline.DAY5_SCENARIOS_PATH)[0]["scenario"]

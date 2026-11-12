@@ -15,7 +15,7 @@ from qaseed.config import ROOT
 from qaseed.evaluate import load_scenarios, sequence_post
 from qaseed.llm_client import KEY_NAME, MODEL_NAME
 
-FAKE_KEY = "AIzaSyTEST_app_key_00000000000000000000"
+FAKE_KEY = "AIzaTEST_fake_app_key_0000"
 CASES = {c["id"]: c for c in load_scenarios() + load_scenarios(pipeline.DAY5_SCENARIOS_PATH)}
 SAMPLE_INDEX = {s["id"]: i for i, s in enumerate(pipeline.sample_scenarios())}
 

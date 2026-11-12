@@ -118,7 +118,7 @@ def test_retry_after_comes_from_header_or_retry_info_and_is_capped():
 
 
 def test_http_error_message_never_contains_the_key():
-    key = "AIzaSyTEST-not-a-real-key-0123456789abc"
+    key = "AIzaTEST-not-a-real-key-0000"
     error = http_error(400, json.dumps({"error": {"message": f"API key not valid: {key}"}}), key)
     assert key not in str(error) and "[redacted]" in str(error)
 

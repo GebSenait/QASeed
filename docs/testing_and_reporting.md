@@ -46,10 +46,10 @@ Quick runs without a report are still fine: `python -m pytest -q`.
 
 1. **One test file per module.** Every `qaseed/<name>.py` and `app.py` must have `tests/test_<name>.py`. `tests/test_layout.py::test_every_module_has_its_own_test_file` fails if one is missing, so a new Day 4–8 module (e.g. a generator) needs its test file in the same change.
 2. **New behaviour ships with tests.** Add or update tests in the same change as the code. Never delete or weaken a test just to get a green report.
-3. **No live API calls in pytest.** Tests use mock `post`/`get` functions and fake keys (`AIzaSyTEST…`). Live Gemini checks are run separately (`python -m qaseed.llm_ping`, `python -m qaseed.evaluate --live`) and recorded as LIVE evidence, never mixed into the mock results.
+3. **No live API calls in pytest.** Tests use mock `post`/`get` functions and fake keys (`AIzaTEST…`). Live Gemini checks are run separately (`python -m qaseed.llm_ping`, `python -m qaseed.evaluate --live`) and recorded as LIVE evidence, never mixed into the mock results.
 4. **Generate a report at least once per day,** at the end of the day's work and before any commit you plan to show as evidence.
 5. **Keep reports honest.** Do not edit report files by hand. A failing run stays in `index.md`; fix the problem and run again, so the history shows both.
-6. **No secrets or personal details in reports.** Never print absolute local paths (they contain the account name); `test_layout.py` checks this. Report metadata shows only the Gemini *model ID*, branch and commit, never the key. Before committing reports, check: `git grep -n "AIza" -- reports` should print nothing except fake `AIzaSyTEST` values (normally nothing at all).
+6. **No secrets or personal details in reports.** Never print absolute local paths (they contain the account name); `test_layout.py` checks this. Report metadata shows only the Gemini *model ID*, branch and commit, never the key. Before committing reports, check: `git grep -n "AIza" -- reports` should print nothing except fake `AIzaTEST` values (normally nothing at all).
 7. **Reports are evidence.** `reports/` is tracked by Git, so the DDS workbook can link to a report. Commit the final report of each day; delete scratch reports from the same day first if you don't want them public, and update `index.md` to match.
 
 ## What the reports cover

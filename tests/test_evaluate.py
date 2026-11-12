@@ -78,7 +78,7 @@ def test_live_mode_only_runs_live_capable_cases(monkeypatch):
         raise AssertionError("network was called")
 
     monkeypatch.setattr(llm_client, "post_json", explode)
-    rows = run("live", env={KEY_NAME: "AIzaSyTEST-not-a-real-key-0123456789abc", MODEL_NAME: "m"}, set_name="robustness")
+    rows = run("live", env={KEY_NAME: "AIzaTEST-not-a-real-key-0000", MODEL_NAME: "m"}, set_name="robustness")
     assert [r["id"] for r in rows] == ["S25", "S26", "S27", "S28"]
     assert all(r["match"] and r["requests"] == 0 for r in rows)
 

@@ -74,7 +74,7 @@ def test_personal_data_is_flagged_without_echoing_it(text, kind):
 
 
 @pytest.mark.parametrize("text", [
-    "Use AIzaSyTEST-not-a-real-key-0123456789abc for 5 customers",
+    "Use AIzaTEST-not-a-real-key-0000 for 5 customers",
     "token: sk-proj-abcdefghijklmnop1234 and 5 invoices",
     "password=hunter2hunter2 create customers",
     "ghp_abcdefghijklmnopqrstuvwxyz0123456789",
@@ -95,7 +95,7 @@ def test_numbers_ending_a_clause_are_still_detected_and_redacted(text):
 
 
 def test_redact_sensitive():
-    text = redact_sensitive("key AIzaSyTEST-not-a-real-key-0123456789abc mail a.b@corp.io tel +971 50 123 4567 and 50 customers")
+    text = redact_sensitive("key AIzaTEST-not-a-real-key-0000 mail a.b@corp.io tel +971 50 123 4567 and 50 customers")
     assert "AIza" not in text and "@corp.io" not in text and "123 4567" not in text
     assert "50 customers" in text
 
@@ -106,7 +106,7 @@ def test_clean_text_drops_control_and_zero_width_characters():
 
 
 def test_clean_free_text_caps_redacts_and_drops_empty():
-    items = ["  ", "x" * 1000, "key AIzaSyTEST-not-a-real-key-0123456789abc"] + [f"a{i}" for i in range(20)]
+    items = ["  ", "x" * 1000, "key AIzaTEST-not-a-real-key-0000"] + [f"a{i}" for i in range(20)]
     cleaned = clean_free_text(items, secret="")
     assert len(cleaned) == MAX_FREE_TEXT_ITEMS + 1
     assert cleaned[-1].endswith("more items omitted)")

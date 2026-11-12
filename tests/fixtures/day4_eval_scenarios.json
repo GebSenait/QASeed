@@ -78,7 +78,7 @@
     {
       "id": "S27",
       "category": "guardrail: API key pasted into the scenario",
-      "scenario": "Use my key AIzaSyTEST-not-a-real-key-0123456789abc and create 5 customers.",
+      "scenario": "Use my key AIzaTEST-not-a-real-key-0000 and create 5 customers.",
       "modes": ["mock", "live"],
       "mock_reply": {"status": "ok", "tables": [{"table": "customers", "count": 5}], "conditions": [], "assumptions": [], "ambiguities": [], "unsupported": []},
       "expected": {"status": "rejected", "issue_codes": ["secret_detected"], "max_requests": 0}
