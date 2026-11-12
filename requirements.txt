@@ -1,7 +1,16 @@
-# Runtime dependencies for the QASeed app (Python 3.11+; Streamlit 1.67 requires it).
-# Streamlit Community Cloud installs this file. Development and test tools: requirements-dev.txt
+# QASeed dependencies (Python 3.11+; Streamlit 1.67 requires it). One file for the app and its tests.
+# Install: python -m pip install -r requirements.txt
+# Browser tests also need Chromium once: python -m playwright install chromium
+
+# App runtime
 streamlit>=1.67,<2
 python-dotenv>=1.2,<2
 pydantic>=2.7,<3
 Faker>=40,<41
 SQLAlchemy>=2.0,<3
+
+# Tests and daily HTML test reports (pytest-html brings pytest-metadata, used by tests/conftest.py)
+pytest>=9.2,<10
+pytest-html>=4.1,<5
+# Real-browser UI tests (tests/test_browser_smoke.py, scripts/day5_ui_e2e.py)
+playwright>=1.65,<2

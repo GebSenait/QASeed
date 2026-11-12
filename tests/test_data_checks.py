@@ -120,3 +120,34 @@ def test_rules_for_absent_tables_are_skipped():
 
 def test_empty_report_is_not_a_pass():
     assert CheckReport().passed is False
+
+
+# ---- Day 6: the payment/invoice rule was rewritten from correlated EXISTS to one GROUP BY ----------
+
+ONLY_FAILED_RULE = "0 invoices with only failed or pending payments that are not unpaid (open or overdue)"
+
+
+def test_paid_invoice_with_a_failed_and_a_succeeded_payment_is_not_flagged(flagship):
+    plan, dataset = flagship
+    # Move one failed payment onto an invoice that already has a succeeded payment (that invoice is paid).
+    tamper(dataset, "UPDATE payments SET invoice_id = (SELECT MIN(invoice_id) FROM payments WHERE status = 'succeeded') "
+                    "WHERE payment_id = (SELECT MIN(payment_id) FROM payments WHERE status = 'failed')")
+    assert ONLY_FAILED_RULE not in failed(plan, dataset)
+
+
+def test_invoice_without_payments_is_not_flagged_by_the_payment_rule(flagship):
+    plan, dataset = flagship
+    tamper(dataset, "DELETE FROM payments WHERE invoice_id = (SELECT MIN(invoice_id) FROM payments WHERE status = 'failed')")
+    tamper(dataset, "UPDATE invoices SET status = 'paid' WHERE invoice_id NOT IN (SELECT invoice_id FROM payments)")
+    assert ONLY_FAILED_RULE not in failed(plan, dataset)
+
+
+def test_every_invoice_with_only_failed_payments_is_counted(flagship):
+    plan, dataset = flagship
+    tamper(dataset, "UPDATE invoices SET status = 'paid' WHERE invoice_id IN (SELECT invoice_id FROM payments "
+                    "GROUP BY invoice_id HAVING SUM(status = 'succeeded') = 0)")
+    with dataset.engine.connect() as conn:
+        expected = conn.execute(text("SELECT COUNT(DISTINCT invoice_id) FROM payments WHERE invoice_id NOT IN "
+                                     "(SELECT invoice_id FROM payments WHERE status = 'succeeded')")).scalar_one()
+    rule = next(r for r in run_checks(dataset.engine, plan, AS_OF).results if r.description == ONLY_FAILED_RULE)
+    assert expected > 0 and rule.actual == expected

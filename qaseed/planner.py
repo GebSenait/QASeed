@@ -160,6 +160,27 @@ def parse_interpretation(text: str) -> LLMInterpretation:
         raise ValueError(f"reply does not match the plan contract at {where}: {first['msg']}") from None
 
 
+def precheck(scenario: str) -> ScenarioPlan | None:
+    """Local input checks (empty, too long, guardrails) that run before any API request.
+
+    Returns the rejected plan, or None when the scenario may be sent to the model.
+    """
+    scenario = clean_text(scenario if isinstance(scenario, str) else "")
+    if not scenario:
+        return _failed(scenario, "empty_scenario", "Enter a test scenario.")
+    if len(scenario) > MAX_SCENARIO_CHARS:
+        return _failed(redact_sensitive(scenario[:MAX_SCENARIO_CHARS]), "scenario_too_long", f"Scenario is longer than {MAX_SCENARIO_CHARS} characters.")
+    findings = check_scenario(scenario)
+    if findings:
+        return ScenarioPlan(
+            scenario=redact_sensitive(scenario),
+            source="none",
+            status="rejected",
+            issues=[Issue(severity="error", code=code, message=message) for code, message in findings],
+        )
+    return None
+
+
 def plan_scenario(
     scenario: str,
     env: dict[str, str] | None = None,
@@ -181,18 +202,9 @@ def plan_scenario(
     schema = schema or load_schema()
     scenario = clean_text(scenario if isinstance(scenario, str) else "")
 
-    if not scenario:
-        return _failed(scenario, "empty_scenario", "Enter a test scenario.")
-    if len(scenario) > MAX_SCENARIO_CHARS:
-        return _failed(redact_sensitive(scenario[:MAX_SCENARIO_CHARS]), "scenario_too_long", f"Scenario is longer than {MAX_SCENARIO_CHARS} characters.")
-    findings = check_scenario(scenario)
-    if findings:
-        return ScenarioPlan(
-            scenario=redact_sensitive(scenario),
-            source="none",
-            status="rejected",
-            issues=[Issue(severity="error", code=code, message=message) for code, message in findings],
-        )
+    rejected = precheck(scenario)
+    if rejected is not None:
+        return rejected
 
     model = llm_client.selected_model(env)
     api_key = llm_client.api_key(env)

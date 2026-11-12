@@ -1,19 +1,17 @@
-# QASeed — Day 3 Implementation Plan (Scenario Planner)
-
-Date: 2026-11-09 · Branch: `day3/agent-planning` · Status: plan written before coding; implemented and verified locally (awaiting owner commit).
+# Day 3 Implementation Plan — Scenario Planner
 
 ## 1. Actual repository state (verified before coding)
 
-| Item | Observed |
-|---|---|
-| Branch / sync | `main` at `8548c99`, equal to `origin/main` (local refs; no network fetch performed). Working tree clean except untracked `_project_references/`. |
-| Day 3 branch | `day3/agent-planning` created from `main`. `main` untouched. |
-| `.gitignore` | Covered `.env`, `.env.*` (with `!.env.example`), `.venv/`, `__pycache__/`, `*.pyc`, `.pytest_cache/`, `*.db`, `*.sqlite3`, `.streamlit/secrets.toml`. **`_project_references/` was missing** — added as the first change and verified with `git check-ignore`. No reference file was ever tracked. |
-| Code | `qaseed/config.py` (paths, optional `.env` load), `qaseed/schema.py` (in-memory SQLite + PRAGMA-based inspection), `qaseed/llm_ping.py` (LLM connectivity ping via `urllib`; Day 2 targeted OpenAI), `app.py` (Streamlit schema viewer), `data/schema.sql` (4 tables). |
-| Tests | 26 passing (`test_layout.py`, `test_schema.py`, `test_llm_ping.py`). |
-| Python / deps | Python 3.12.0 venv; streamlit 1.67.0, pytest 9.2.0, python-dotenv 1.2.4. **Pydantic was not installed.** |
-| LLM config | No runtime API key configured → live connectivity cannot be tested. (Day 3 switched the provider to Google Gemini's free tier; see section 5.) |
-| Not present | No planner, no generator, no validator, no SQLAlchemy/Faker usage (README lists SQLAlchemy in the stack, but no code uses it yet). |
+| Item          | Observed                                                                                                                                                                                                                                                                                           |
+| ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Branch / sync | `main` at `8548c99`, equal to `origin/main` (local refs; no network fetch performed). Working tree clean except untracked `_project_references/`.                                                                                                                                                  |
+| Day 3 branch  | `day3/agent-planning` created from `main`. `main` untouched.                                                                                                                                                                                                                                       |
+| `.gitignore`  | Covered `.env`, `.env.*` (with `!.env.example`), `.venv/`, `__pycache__/`, `*.pyc`, `.pytest_cache/`, `*.db`, `*.sqlite3`, `.streamlit/secrets.toml`. `_project_references/` **was missing** — added as the first change and verified with `git check-ignore`. No reference file was ever tracked. |
+| Code          | `qaseed/config.py` (paths, optional `.env` load), `qaseed/schema.py` (in-memory SQLite + PRAGMA-based inspection), `qaseed/llm_ping.py` (LLM connectivity ping via `urllib`; Day 2 targeted OpenAI), `app.py` (Streamlit schema viewer), `data/schema.sql` (4 tables).                             |
+| Tests         | 26 passing (`test_layout.py`, `test_schema.py`, `test_llm_ping.py`).                                                                                                                                                                                                                               |
+| Python / deps | Python 3.12.0 venv; streamlit 1.67.0, pytest 9.2.0, python-dotenv 1.2.4. **Pydantic was not installed.**                                                                                                                                                                                           |
+| LLM config    | No runtime API key configured → live connectivity cannot be tested. (Day 3 switched the provider to Google Gemini's free tier; see section 5.)                                                                                                                                                     |
+| Not present   | No planner, no generator, no validator, no SQLAlchemy/Faker usage (README lists SQLAlchemy in the stack, but no code uses it yet).                                                                                                                                                                 |
 
 ## 2. Confirmed Day 3 requirements
 

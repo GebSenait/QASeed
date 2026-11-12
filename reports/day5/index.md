@@ -1,8 +1,8 @@
-# QASeed — Day 5 reports
+# Day 5 — Reports
 
 | File | What it shows |
 |---|---|
-| [day5_test_report_20261111-051707.html](day5_test_report_20261111-051707.html) | **Final Day 5 test run: 323 passed**, 0 failed, 0 skipped |
+| [day5_test_report_20261111-110720.html](day5_test_report_20261111-110720.html) | **Final Day 5 test run: 375 passed**, 0 failed, 0 skipped (incl. 5 real-browser tests) |
 | [ui_e2e_payment_live.txt](ui_e2e_payment_live.txt) | **Live Gemini, through the Streamlit app:** payment scenario (8 succeeded / 4 failed) → plan (1 request, 6.3 s, 1,319 tokens) → 48 rows → 24/24 checks → CSV ZIP → 10/10 independent ZIP checks PASS |
 | [ui_e2e_payment_offline.txt](ui_e2e_payment_offline.txt) | Same scenario replayed offline from the recorded live reply (no API call): PASS |
 | [generator_S01_mock.txt](generator_S01_mock.txt) | Flagship scenario: plan → 200 linked rows → **25/25 data checks PASS** (requested vs generated vs verified, sample rows) |

@@ -190,6 +190,16 @@ def _offline_plan(sample_id: str) -> ScenarioPlan:
                          post=canned_reply_post(case["mock_reply"]), source="mock")
 
 
+def blocked_locally(scenario: str) -> bool:
+    """True when QASeed's own input checks refuse the scenario, so planning it never reaches the API.
+
+    The app uses this to avoid spending a Live AI plan on input that is refused locally.
+    """
+    from qaseed.planner import precheck
+
+    return precheck(scenario) is not None
+
+
 def find_sample(scenario: str) -> dict | None:
     wanted = clean_text(scenario or "")
     return next((s for s in sample_scenarios() if clean_text(s["scenario"]) == wanted), None)

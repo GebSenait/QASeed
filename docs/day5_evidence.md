@@ -1,7 +1,5 @@
 # Day 5 — Integration of Model/API with Interface
 
-Date: 11 Nov 2026 · Branch: `feature/day5-ui-integration` (uncommitted, awaiting owner review) · Interface: Streamlit 1.67 · Plan: [day5_implementation_plan.md](day5_implementation_plan.md)
-
 > **MVP export scope: CSV only.** QASeed exports customers, subscriptions, invoices and payments as CSV files in one ZIP with `validation_report.json`. **SQL export is a planned post-MVP enhancement** and is not part of Day 5. Priority: a working end-to-end Streamlit demo and verified data quality over more export formats.
 
 ## Checklist
@@ -14,7 +12,7 @@ Date: 11 Nov 2026 · Branch: `feature/day5-ui-integration` (uncommitted, awaitin
 | 4 | Logging of inputs/outputs enabled (safe logging) | **DONE** | One `qaseed` log line per step: mode, sample id, scenario *length*, status, issue codes, requests, retries, error category, timings, row/check counts, export re-check result, ZIP size. Scenario text, generated values and the key are never logged; a redaction filter masks key/email/number shapes. |
 | 5 | Demo link created (even if rough) | **DONE (link pending upload)** | Live-take demo video recorded (82 s, 1920×1080 MP4, with the author's name on screen), kept outside the repo for upload. Hosted app: Day 7. |
 
-## Workbook fields (ready to paste)
+## Workbook fields
 
 | Field | Entry |
 |---|---|
@@ -28,7 +26,7 @@ Date: 11 Nov 2026 · Branch: `feature/day5-ui-integration` (uncommitted, awaitin
 - **CSV-only export for the MVP; SQL export moved to post-MVP.** CSV covers the demo need; time went into a working end-to-end flow and proven data quality.
 - **Payments and invoices must tell one story.** The owner's payment scenario showed that failed payments could sit on paid invoices. The generator now links payments to matching invoices, two new checks prove it, and impossible combinations are refused instead of silently produced.
 - **Verify the file, not just the database.** Before the download is offered, the ZIP is re-read, loaded into a fresh SQLite database and the same checks re-run; tampered files fail.
-- **Service layer between UI and logic (`qaseed/pipeline.py`).** The UI cannot fabricate results; every plan, check and file comes from tested modules.
+- **Service layer between UI and logic (**`qaseed/pipeline.py`**).** The UI cannot fabricate results; every plan, check and file comes from tested modules.
 - **One live request, then replay.** The live Gemini reply for the payment scenario was recorded once and is replayed offline in the app, tests and demo, so the free tier is not used up.
 - **Results kept in session state; same input reuses the stored plan.** Streamlit reruns and double clicks do not spend API quota or regenerate data.
 - **Log metadata, not content.** Scenario length and outcome are enough to debug; the text itself may hold customer details.
@@ -142,7 +140,7 @@ Offline generator results: 7/7 scenarios, **120/120 checks** ([datagen_mock.json
 
 ## Dependencies
 
-Runtime (`requirements.txt`): no new packages. Development (`requirements-dev.txt`): pytest, pytest-html and **Playwright 1.65** (+ `python -m playwright install chromium`) for the real-browser tests. `pip check` → no broken requirements (Python 3.12.0, Streamlit 1.67.0).
+Runtime (`requirements.txt`): no new packages. Development (`requirements-dev.txt`): pytest, pytest-html and **Playwright 1.65** (+ `python -m playwright install chromium`) for the real-browser tests. `pip check` → no broken requirements (Python 3.12.0, Streamlit 1.67.0). *Day 6 update: both files were merged into a single* `requirements.txt`*.*
 
 ## Post-MVP enhancements (recorded, not built)
 
@@ -151,4 +149,4 @@ Runtime (`requirements.txt`): no new packages. Development (`requirements-dev.tx
 
 ## Screenshots
 
-Captured automatically during the final live take (Playwright, 3200×1800): one per phase (step 1 Describe, step 2 Review AI plan, step 3 Generate & validate, step 4 Download), the completed flow and the blocked invalid request. They are kept outside the repository for upload. To re-capture by hand, follow [day5_manual_test_guide.md](day5_manual_test_guide.md); before publishing, check that no key, local path or account name is visible.
+Captured automatically during the final live take (Playwright, 3200×1800): one per phase (step 1 Describe, step 2 Review AI plan, step 3 Generate & validate, step 4 Download), the completed flow and the blocked invalid request. They are kept outside the repository for upload. To re-capture by hand, follow the manual test guide (kept outside the repository since Day 6); before publishing, check that no key, local path or account name is visible.

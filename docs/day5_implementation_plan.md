@@ -1,6 +1,4 @@
-# QASeed — Day 5 Implementation Plan (Interface Integration)
-
-Date: 2026-11-11 · Branch: `feature/day5-ui-integration` · Status: plan written after the audit and before any code change; export scope updated the same day (below).
+# Day 5 Implementation Plan — Interface Integration
 
 > **Scope update (11 Nov 2026): CSV-only export for the Day 5 MVP.** QASeed exports the four related tables (customers, subscriptions, invoices, payments) as CSV files in one ZIP together with a validation report. **SQL export is not part of Day 5; it is a planned post-MVP enhancement.** Priority: a working end-to-end Streamlit demo and verified data quality over additional export formats. The Day 1 proposal and the architecture guide list "SQL/CSV" downloads; those reference documents are left unchanged and this note records the decision.
 

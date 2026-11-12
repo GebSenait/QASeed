@@ -6,7 +6,6 @@ from qaseed.config import ROOT, SCHEMA_PATH, database_path
 REQUIRED_FILES = (
     "README.md",
     "requirements.txt",
-    "requirements-dev.txt",
     "assets/brand/qaseed_logo.png",
     "app.py",
     ".gitignore",
@@ -100,6 +99,7 @@ def _local_identifiers() -> list[str]:
 
 def test_published_files_do_not_contain_local_user_names_or_paths():
     """Docs, README and reports are pushed to GitHub: no account names or home-folder paths."""
+    import re
     from pathlib import Path
 
     home = str(Path.home())
@@ -112,5 +112,38 @@ def test_published_files_do_not_contain_local_user_names_or_paths():
         lowered = text.lower()
         if home.lower() in lowered or home.replace("\\", "\\\\").lower() in lowered:
             leaks.append(f"{path.relative_to(ROOT)}: home folder path")
-        leaks += [f"{path.relative_to(ROOT)}: account name" for name in _local_identifiers() if name.lower() in lowered]
+        # Whole words only: the account name can be part of the author's public name, which may appear.
+        leaks += [f"{path.relative_to(ROOT)}: account name" for name in _local_identifiers()
+                  if re.search(rf"(?<![a-z0-9]){re.escape(name.lower())}(?![a-z0-9])", lowered)]
     assert leaks == []
+
+
+# Import name -> distribution name in requirements.txt (pytest_metadata is installed by pytest-html).
+_DISTRIBUTIONS = {"dotenv": "python-dotenv", "pytest_metadata": "pytest-html"}
+
+
+def test_one_dependency_file_covers_every_third_party_import():
+    """Day 6: requirements.txt is the only dependency file and lists every package the code imports."""
+    import ast
+    import re
+    import sys
+
+    assert not (ROOT / "requirements-dev.txt").exists()
+    listed = {
+        re.split(r"[<>=!~\[ ;]", line.strip(), maxsplit=1)[0].lower()
+        for line in (ROOT / "requirements.txt").read_text(encoding="utf-8").splitlines()
+        if line.strip() and not line.strip().startswith("#")
+    }
+    sources = [ROOT / "app.py", *(ROOT / "qaseed").glob("*.py"), *(ROOT / "scripts").glob("*.py"), *(ROOT / "tests").glob("*.py")]
+    local = {"qaseed", "tests", "scripts"} | {path.stem for path in sources}
+    imported = set()
+    for path in sources:
+        for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
+            if isinstance(node, ast.Import):
+                imported |= {alias.name.split(".")[0] for alias in node.names}
+            elif isinstance(node, ast.ImportFrom) and node.module and not node.level:
+                imported.add(node.module.split(".")[0])
+    third_party = {name for name in imported if name not in sys.stdlib_module_names and name not in local}
+    missing = sorted(name for name in third_party if _DISTRIBUTIONS.get(name, name).lower() not in listed)
+    assert third_party and missing == []
+
