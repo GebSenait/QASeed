@@ -1,7 +1,5 @@
 # Day 4 — Optimizing Integration & Application Evaluation
 
-Date: 10 Nov 2026 · Model: Google Gemini `gemini-3.5-flash-lite` (free tier) · Prompt: P04
-
 ## Checklist
 
 - [x] **Evaluation approach defined (metrics + test set)** — 30 scenarios, 10 metrics, expected vs actual saved per scenario.

@@ -6,6 +6,7 @@ so Streamlit reruns never repeat an API call or a generation by themselves.
 """
 
 import base64
+import re
 from datetime import date, datetime
 from pathlib import Path
 
@@ -192,6 +193,11 @@ def plan_message(plan, mode: str, live_ready: bool) -> tuple[str, str]:
     return ("warning" if plan.status == "needs_clarification" else "error"), text
 
 
+def plain_markdown(text: str) -> str:
+    """Show model-written text literally: no links, images, HTML or formatting from the model."""
+    return re.sub(r"([\\`*_{}\[\]()<>#+\-.!|~:$])", r"\\\1", text)
+
+
 def plan_key() -> tuple[str, str]:
     return clean_text(st.session_state.scenario), st.session_state.mode
 
@@ -349,7 +355,8 @@ if plan_clicked:
     if st.session_state.plan_outcome is not None and st.session_state.plan_key == key:
         st.info("Already planned (no new request).")
         log.info("event=plan status=reused")
-    elif key[1] == LIVE and not live_plan_allowed():
+    # Input refused by QASeed's own checks never reaches the API, so it does not spend a Live AI plan.
+    elif key[1] == LIVE and not pipeline.blocked_locally(st.session_state.scenario) and not live_plan_allowed():
         st.warning("Live AI limit reached: try a ready-made example.")
         log.warning("event=plan mode=live status=limited")
     else:
@@ -407,7 +414,7 @@ if outcome is not None:
                     st.caption("None: every row gets the normal status.")
         if plan.assumptions and plan.status == "valid":  # a rejected plan shows only its one-line reason
             st.markdown("**Assumptions**")
-            st.markdown("\n".join(f"- {a}" for a in plan.assumptions))
+            st.markdown("\n".join(f"- {plain_markdown(a)}" for a in plan.assumptions))
         with st.expander("Plan JSON"):
             st.code(plan.model_dump_json(indent=2), language="json")
 
@@ -503,9 +510,9 @@ with st.expander("About QASeed · project status and sample schema"):
         f"**QASeed v{__version__}** · synthetic test data only · no production connections.\n\n"
         "**Project status**\n"
         "- ✅ AI planning, schema checks, linked data generation, independent data checks, verified CSV export\n"
-        "- ⏭️ Day 6: automatic repair of failed checks\n"
+        "- ✅ Day 6: security review, input and budget checks, performance fixes\n"
         "- ⏭️ Day 7: hosted demo\n"
-        "- ⏭️ Post-MVP: SQL export"
+        "- ⏭️ Post-MVP: SQL export, automatic repair of failed checks"
     )
     connection = create_connection()
     try:

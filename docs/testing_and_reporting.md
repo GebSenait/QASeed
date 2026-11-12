@@ -1,6 +1,6 @@
-# QASeed — Testing and Daily Test Reports (Days 3–8)
+# Testing and Daily Test Reports
 
-Tools: **pytest** (test runner) + **pytest-html** (standalone HTML report with pass/fail details, durations, timestamps and environment metadata). Both are in `requirements-dev.txt` (with Playwright for the browser tests); the app itself only needs `requirements.txt`.
+Tools: **pytest** (test runner) + **pytest-html** (standalone HTML report with pass/fail details, durations, timestamps and environment metadata). Both are in `requirements.txt`, with Playwright for the browser tests.
 
 ## Folder layout
 
@@ -56,7 +56,7 @@ Quick runs without a report are still fine: `python -m pytest -q`.
 
 | Test file | Covers |
 |---|---|
-| `test_layout.py` | Project files, `.gitignore` rules, module-test rule, no local account names/paths in README, docs or reports |
+| `test_layout.py` | Project files, `.gitignore` rules, module-test rule, single `requirements.txt` covering every third-party import, no local account names/paths in README, docs or reports |
 | `test_config.py` | Paths and `.env` loading |
 | `test_schema.py` | SQLite schema, foreign keys, allowed values |
 | `test_llm_client.py` | Gemini request/response helpers, typed errors (kind, retryable, Retry-After), key redaction |

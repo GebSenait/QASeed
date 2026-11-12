@@ -90,9 +90,11 @@ BUSINESS_RULES = [
      "SELECT COUNT(DISTINCT i.invoice_id) FROM invoices i JOIN payments p ON p.invoice_id = i.invoice_id "
      "WHERE p.status = 'succeeded' AND i.status <> 'paid'"),
     (("payments", "invoices"), "0 invoices with only failed or pending payments that are not unpaid (open or overdue)",
-     "SELECT COUNT(*) FROM invoices i WHERE EXISTS (SELECT 1 FROM payments p WHERE p.invoice_id = i.invoice_id) "
-     "AND NOT EXISTS (SELECT 1 FROM payments p WHERE p.invoice_id = i.invoice_id AND p.status = 'succeeded') "
-     "AND i.status NOT IN ('open', 'overdue')"),
+     # Invoices that have payments, none of them succeeded. Grouped once (Day 6): the earlier correlated
+     # EXISTS / NOT EXISTS scanned all payments per invoice (payments.invoice_id has no index).
+     "SELECT COUNT(*) FROM invoices i JOIN (SELECT invoice_id FROM payments GROUP BY invoice_id "
+     "HAVING SUM(status = 'succeeded') = 0) p ON p.invoice_id = i.invoice_id "
+     "WHERE i.status NOT IN ('open', 'overdue')"),
 ]
 
 

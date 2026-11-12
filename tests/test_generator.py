@@ -2,6 +2,7 @@
 
 import json
 from datetime import date
+from types import SimpleNamespace
 
 import pytest
 from sqlalchemy import text
@@ -214,3 +215,42 @@ def test_succeeded_payments_without_any_paid_invoice_are_refused():
     plan = _with_invoice_condition("overdue", 12)
     with pytest.raises(GenerationError, match="succeeded payments need a paid invoice"):
         generate(plan, as_of=AS_OF)
+
+
+# ---- Day 6: payment linking is linear and gives the same result as the Day 5 per-invoice loop --------
+
+
+def _day5_unfixed_invoice_statuses(invoice_status, payment_status):
+    """The Day 5 algorithm (one scan of all payments per invoice), kept here as the reference."""
+    statuses = list(invoice_status)
+    links = [j % len(statuses) for j in range(len(payment_status))]
+    for k in range(len(statuses)):
+        mine = [payment_status[j] for j, link in enumerate(links) if link == k]
+        if mine:
+            statuses[k] = "paid" if "succeeded" in mine else generator.UNPAID_DEFAULT
+    return statuses, links
+
+
+@pytest.mark.parametrize("invoices,payments,seed", [(1, 1, 0), (3, 10, 1), (10, 3, 2), (50, 120, 3), (200, 200, 4)])
+def test_payment_linking_matches_the_day5_reference(invoices, payments, seed):
+    import random
+
+    rng = random.Random(seed)
+    invoice_status = [rng.choice(["paid", "open"]) for _ in range(invoices)]
+    payment_status = [rng.choice(["succeeded", "failed", "pending"]) for _ in range(payments)]
+    plan = SimpleNamespace(conditions=[])  # no invoice-status condition: the branch that was quadratic
+    expected_statuses, expected_links = _day5_unfixed_invoice_statuses(invoice_status, payment_status)
+    inv, pay = {"status": list(invoice_status)}, {"status": list(payment_status)}
+    generator._link_payments(plan, inv, pay)
+    assert inv["status"] == expected_statuses and pay["invoice_index"] == expected_links
+
+
+def test_payment_linking_scales_linearly():
+    import time
+
+    plan = SimpleNamespace(conditions=[])
+    inv = {"status": ["paid"] * 20_000}
+    pay = {"status": ["succeeded", "failed"] * 10_000}
+    started = time.perf_counter()
+    generator._link_payments(plan, inv, pay)
+    assert time.perf_counter() - started < 2.0  # Day 5 loop: tens of seconds at this size

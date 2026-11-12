@@ -24,7 +24,7 @@ def test_index_is_created_once_and_rows_appended(tmp_path):
     index = test_report._append_index(tmp_path, 3, stamp, report, 0, {"passed": 5})
     test_report._append_index(tmp_path, 3, stamp, report, 1, {"passed": 4, "failed": 1})
     text = index.read_text(encoding="utf-8")
-    assert text.count("# QASeed — Day 3 test reports") == 1
+    assert text.count("# Day 3 — Test Reports") == 1
     assert "| 2026-11-09 10:30:00 | PASS | 5 | 0 | 0 | 0 |" in text
     assert "| FAIL (exit 1) | 4 | 1 | 0 | 0 |" in text
     assert f"[{report.name}]({report.name})" in text

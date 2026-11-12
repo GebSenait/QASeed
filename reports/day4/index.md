@@ -1,4 +1,4 @@
-# QASeed — Day 4 reports
+# Day 4 — Reports
 
 | File | What it shows |
 |---|---|

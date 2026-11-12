@@ -1,6 +1,4 @@
-# QASeed — Day 3 Evidence (Building the Brain of the App)
-
-Date: 2026-11-09 · Branch: `day3/agent-planning` (from `main` @ `8548c99`) · State: Day 3 complete locally; awaiting owner commit, push and PR.
+# Day 3 — Building the Brain of Your App
 
 > Labelling rule used in this document: **MOCK** = canned model replies written by hand to test QASeed's own code. **LIVE** = a real API response. LIVE results are in sections 1.5a (samples) and 1.5b (full 18-scenario run).
 
@@ -144,7 +142,7 @@ Flagship planner run (`python -m qaseed.planner "<flagship scenario>"`): status 
 
 Summary: **3/3 matched** (P01: 2/3); median latency 1642 ms (min 935, max 2249, n = 3). S14 now asks 2 questions instead of 6, as P02 instructs. Still a 3-scenario sample; the full 18-scenario live run is the next step.
 
-Flagship planner run on P02 (`python -m qaseed.planner "<flagship scenario>"`, owner-run): status **`valid`**, source `llm`, 1 attempt, 1355 ms, `promptTokenCount=829 candidatesTokenCount=274 totalTokenCount=1103` (P01 run: `needs_clarification`, 1498 ms, 969 tokens). The screenshot shows the end of the plan (verification checks and metadata); the resolved counts and conditions were not visible in it.
+Flagship planner run on P02 (`python -m qaseed.planner "<flagship scenario>"`, owner-run): status `valid`, source `llm`, 1 attempt, 1355 ms, `promptTokenCount=829 candidatesTokenCount=274 totalTokenCount=1103` (P01 run: `needs_clarification`, 1498 ms, 969 tokens). The screenshot shows the end of the plan (verification checks and metadata); the resolved counts and conditions were not visible in it.
 
 **Prompt P03 (2026-11-09).** A full live run on P02 showed that S11 ("50 customers and 5 refunds") came back as `unsupported_request`, because the model moved the unknown table into `unsupported`. P03 tells the model to keep unknown table/column/value names in `tables`/`conditions`, so QASeed's validator reports `unknown_table` / `unknown_column` / `invalid_value`. It also limits `unsupported` to work outside synthetic test-data planning. `PROMPT_ID` was bumped to P03 and the suite passes (136 tests). The P02 full-run table itself was not captured.
 
@@ -171,37 +169,6 @@ Command: `python -m qaseed.evaluate --live` (all 18 scenarios) · model `gemini-
 - English only; one sample schema; no records are generated.
 
 ---
-
-## 2. DDS workbook evidence (Day 3 page, ready to paste after review)
-
-Official DDS Progress Workbook read locally (gitignored `_project_references/`; read only, not modified). Day 3 checklist:
-
-- ☑ Core logic implemented (model/prompt/workflow): planner + prompt P01 + deterministic validation.
-- ☑ API integration expanded beyond hello world: live Gemini planner calls return structured JSON plans.
-- ☑ 10–20 test examples drafted: 18 scenarios.
-- ☑ First measurable baseline: mock 18/18 (deterministic logic); LIVE: sample P01 2/3 → P02 3/3; full set on P03 15/18 (3 API errors, 0 wrong plans).
-- ☑ README updated with run instructions.
-
-**What is the "brain" of your app?** QASeed's planner sends a tester's plain-English scenario and the sample schema to an LLM, which returns a structured JSON plan. Python then checks the plan against the real schema: tables, columns, allowed values, counts, conflicts and dependencies. Only plans that pass these checks are used.
-
-**Link to key code/workflow:** `qaseed/planner.py`, `qaseed/plan_validator.py`, `qaseed/plan_models.py` (add GitHub links after the PR is opened).
-
-**Baseline results:** 18 scenarios. MOCK: 18/18 expected outcomes (7 valid, 10 rejected, 1 needs clarification). LIVE (Gemini `gemini-3.5-flash-lite`) on S01/S08/S14: prompt P01 2/3 → after fix, prompt P02 3/3; median latency 1.6 s; API PASS. Failures found and fixed: P01 asked about unstated totals (fixed in P02); P02 sent unknown tables to `unsupported` (fixed in P03). Full live run on P03: 15/18 matched, 3 `llm_error` API failures (free-tier limit suspected), 0 wrong plans.
-
-**What you will improve next:** Day 4 will generate linked records from validated plans and check the plan's verification checks against the generated data. It will also run the live evaluation and fix prompt failures.
-
-**Decisions made today (why):**
-- One LLM planner plus deterministic Python validation, not multiple agents, so that schema correctness never depends on the model.
-- Pydantic strict contract, with no extra keys and real integers, so malformed or hallucinated output fails visibly.
-- Mock replies are labelled `source: "mock"`, and live mode needs an explicit `--live` flag, so mock results cannot be presented as model results.
-- Runtime provider switched from OpenAI to Google Gemini's free tier (`gemini-3.5-flash-lite`), because OpenAI's API needs prepaid credits. The model ID comes from `.env`, and `--list-models` confirms it against the key.
-- Status conditions only, for Day 3, to keep the plan executable by a deterministic Day 4 generator.
-
-**Blockers / help needed:** Day 2 blocker (no runtime LLM access) resolved by moving to Google Gemini's free tier; live calls now succeed. Prompt issue found live (P01 asked about unstated counts, S01) and fixed in P02 (3/3 on re-run).
-
-**Workbook §4 (prompt versions):** P03 (current) keeps unknown names in tables/conditions so the validator rejects them, and limits `unsupported` to out-of-scope work. P02 replaced P01 after the live S01 failure: unstated totals stay null, ambiguities only when the record type is unclear. P01: Goal: scenario → JSON plan. System constraints: schema-only names, no SQL, copy numbers verbatim, flag ambiguity or unsupported requests. Few-shot: none. Tools: none. Results: P01 live 2/3 on S01/S08/S14 (S01 failed: unneeded clarification question); P02 live 3/3.
-
-### Screenshots to capture manually
 
 1. Browser: the Day 3 pytest-html report (`reports/day3/…html`) summary showing 136 passed (`day3_test_report_20261109-181137.html`).
 2. Terminal: `python -m qaseed.evaluate` mock table and summary (label it "mock").

@@ -190,10 +190,14 @@ def _link_payments(plan: ScenarioPlan, invoices: dict[str, list[str]], payments:
     fixed = any(c.table == "invoices" and c.column == "status" for c in plan.conditions)
     if not fixed:
         links = [j % len(invoice_status) for j in range(len(payment_status))]
-        for k in range(len(invoice_status)):
-            mine = [payment_status[j] for j, link in enumerate(links) if link == k]
-            if mine:
-                invoice_status[k] = "paid" if "succeeded" in mine else UNPAID_DEFAULT
+        # One pass over the payments (Day 6: was one pass per invoice, O(invoices x payments)).
+        has_payment, has_success = set(), set()
+        for status, k in zip(payment_status, links):
+            has_payment.add(k)
+            if status == "succeeded":
+                has_success.add(k)
+        for k in has_payment:
+            invoice_status[k] = "paid" if k in has_success else UNPAID_DEFAULT
         payments["invoice_index"] = links
         return
     paid = [k for k, s in enumerate(invoice_status) if s == "paid"]
