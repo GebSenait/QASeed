@@ -192,8 +192,11 @@ def test_full_journey_tracker_download_and_reset_in_a_real_browser(page):
     assert page.locator(".st-key-download_csv_zip").count() == 0
 
 
-def test_header_is_not_hidden_when_the_sidebar_is_collapsed(page):
-    """Collapsed sidebar: Streamlit's top bar shows its own logo, so the QASeed header must start below it."""
+def test_header_is_not_hidden_under_streamlits_top_bar(page):
+    """The QASeed brand row starts below Streamlit's top bar with the sidebar open or collapsed.
+
+    Day 7 hotfix: on Streamlit Community Cloud the top bar is opaque, so a brand row under it was cut off.
+    """
     expect = sync_api.expect
 
     def tops():
@@ -203,7 +206,7 @@ def test_header_is_not_hidden_when_the_sidebar_is_collapsed(page):
     page.locator(".qs-brand").wait_for(timeout=30_000)
     page.locator('[data-testid="stHeader"]').wait_for(state="attached", timeout=30_000)
     header_bottom, brand_top = tops()
-    assert brand_top < header_bottom + 10  # sidebar open: compact, nothing drawn over the left of the bar
+    assert brand_top >= header_bottom, f"sidebar open: header {header_bottom}px overlaps the brand row at {brand_top}px"
     page.hover('[data-testid="stSidebar"]')
     page.get_by_role("button", name="Collapse sidebar").click()
     expect(page.locator('[data-testid="stSidebar"]')).to_have_attribute("data-collapsed", "true")
