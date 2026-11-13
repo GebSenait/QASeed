@@ -29,11 +29,11 @@ except Exception:  # no secrets configured (e.g. local run with .env)
     pass
 log = pipeline.configure_logging()
 
-# Brand asset (tracked in the repo), used as the browser-tab icon. The app still works without it.
-LOGO = Path(__file__).resolve().parent / "assets" / "brand" / "qaseed_logo.png"
+# Browser-tab icon: the same sprout mark as the header (tracked in the repo). The app still works without it.
+LOGO = Path(__file__).resolve().parent / "assets" / "brand" / "qaseed_mark.png"
 HAS_LOGO = LOGO.is_file()
 
-st.set_page_config(page_title="QASeed · AI test data agent", page_icon=str(LOGO) if HAS_LOGO else "✅", layout="centered")
+st.set_page_config(page_title="QASeed", page_icon=str(LOGO) if HAS_LOGO else "🌱", layout="centered")
 
 LIVE, OFFLINE = "live", "offline"
 STEPS = ["Describe", "Review", "Verify", "Download"]

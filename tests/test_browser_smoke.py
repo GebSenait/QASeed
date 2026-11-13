@@ -191,6 +191,13 @@ def test_landing_page_has_one_cta_and_the_four_step_overview(landing):
     assert landing.locator(".st-key-home_btn").count() == 0
 
 
+def test_browser_tab_shows_the_same_name_and_sprout_mark_as_the_header(landing):
+    """Tab title is just "QASeed" (Streamlit Cloud adds " · Streamlit"); the tab icon is the header's sprout mark."""
+    assert re.fullmatch(r"QASeed( · Streamlit)?", landing.title()), landing.title()
+    icon = landing.evaluate("[...document.querySelectorAll('link[rel*=icon]')].map(l => l.href).pop()")
+    assert landing.request.get(icon).body() == (ROOT / "assets" / "brand" / "qaseed_mark.png").read_bytes()
+
+
 def test_brand_and_ready_made_mode_without_api_key(page):
     expect = sync_api.expect
     expect(page.locator(".qs-name")).to_have_text("QASeed")
