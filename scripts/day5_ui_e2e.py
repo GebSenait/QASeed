@@ -4,8 +4,8 @@
     python scripts/day5_ui_e2e.py --live --confirm   # live Gemini: ONE plan (1 request normally, at most 4)
     python scripts/day5_ui_e2e.py --live --confirm --out reports/day5/ui_e2e_payment_live.txt
 
-Steps, exactly as a user clicks them: type the scenario -> Plan scenario ->
-Generate & validate data -> take the ZIP the download button serves. The ZIP
+Steps, exactly as a user clicks them: Get started -> type the scenario -> Generate ->
+tick "I've reviewed the plan." -> Generate & verify -> Outputs -> take the ZIP the app serves. The ZIP
 is then checked independently of the app: four CSV files, record counts,
 unique IDs, every payment -> invoice -> subscription -> customer link, the
 requested payment statuses, and the payment/invoice story (a succeeded
@@ -95,6 +95,7 @@ def run(scenario: str, live: bool, seed: int = 42, as_of: date | None = None) ->
     llm_client.post_json = recording_post
     try:
         app = AppTest.from_file(str(ROOT / "app.py"), default_timeout=120).run()
+        app.button(key="start_btn").click().run()  # landing page -> Describe
         mode = "live" if live else "offline"
         if live and not any(o.startswith("Live AI") for o in app.radio(key="mode").options):  # options are labels
             return {"status": "SKIPPED", "reason": "live planner not configured (GEMINI_API_KEY / GEMINI_MODEL)"}
@@ -124,8 +125,11 @@ def run(scenario: str, live: bool, seed: int = 42, as_of: date | None = None) ->
         if "generate_btn" not in [b.key for b in app.button]:
             shown["generated"] = False
             return shown
+        app.checkbox(key="reviewed").check().run()
         app.button(key="generate_btn").click().run()
         result = app.session_state["gen_result"]
+        if "outputs_btn" in [b.key for b in app.button]:
+            app.button(key="outputs_btn").click().run()
         downloads = app.get("download_button")
         shown.update({
             "generated": result is not None,

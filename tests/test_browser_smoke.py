@@ -109,20 +109,32 @@ def browser():
         chromium.close()
 
 
+HEADLINE = "From test scenarios to verified data."
+
+
 @pytest.fixture
-def page(browser, app_url):
+def landing(browser, app_url):
+    """A fresh visitor on the landing page."""
     context = browser.new_context(viewport={"width": 1440, "height": 900}, accept_downloads=True)
     page = context.new_page()
     page.goto(app_url)
-    heading = page.get_by_text("1 · Describe the scenario")
+    heading = page.get_by_text(HEADLINE)
     try:
         heading.wait_for(timeout=120_000 if BASE_URL else 30_000)  # a hosted app may wake from sleep
     except sync_api.Error:  # the Streamlit websocket occasionally stalls on a busy machine: reload once
         page.reload()
         heading.wait_for(timeout=60_000)
-    use_ready_made_mode(page)
     yield page
     context.close()
+
+
+@pytest.fixture
+def page(landing):
+    """Get started -> empty Describe step, in Ready-made examples mode."""
+    landing.locator(".st-key-start_btn button").click()
+    landing.get_by_role("textbox", name="Test scenario").wait_for(timeout=30_000)
+    use_ready_made_mode(landing)
+    return landing
 
 
 def use_ready_made_mode(page) -> None:
@@ -134,87 +146,137 @@ def use_ready_made_mode(page) -> None:
 
 
 def pick_example(page, example_id: str) -> None:
-    """Choose an example, copy it into the scenario box and plan it, waiting for each Streamlit rerun."""
+    """Choose an example, copy it into the scenario box and press Generate, waiting for each Streamlit rerun."""
     expect = sync_api.expect
     text = next(s["scenario"] for s in pipeline.sample_scenarios() if s["id"] == example_id)
     picker = page.locator(".st-key-sample_choice input")  # Streamlit renders the dropdown lazily
     picker.wait_for(timeout=30_000)
     picker.click()
     page.get_by_role("option", name=re.compile(rf"^{re.escape(example_id)} ")).click()  # selecting loads it
-    expect(page.get_by_role("textbox", name="Your test scenario (plain English)")).to_have_value(text, timeout=15_000)
+    expect(page.get_by_role("textbox", name="Test scenario")).to_have_value(text, timeout=15_000)
     page.locator(".st-key-plan_btn button").click()
+
+
+def review_and_verify(page) -> None:
+    """Review step: confirm the plan, then Generate & verify."""
+    expect = sync_api.expect
+    page.get_by_text("Review the plan").wait_for(timeout=30_000)
+    expect(page.locator(".st-key-generate_btn button")).to_be_disabled()  # confirmation comes first
+    page.locator(".st-key-reviewed label").click()
+    expect(page.locator(".st-key-generate_btn button")).to_be_enabled(timeout=15_000)
+    page.locator(".st-key-generate_btn button").click()
+    page.get_by_text("Verification results").wait_for(timeout=30_000)
+
+
+def open_outputs(page) -> None:
+    page.locator(".st-key-outputs_btn button").click()
+    page.get_by_text("Download results").wait_for(timeout=30_000)
+
+
+def tracker(page) -> list[str]:
+    """now / done / blocked / todo of the four workspace steps, read from the stepper buttons' keys."""
+    steps = page.locator('[class*="st-key-nav_"]')
+    sync_api.expect(steps).to_have_count(4)
+    classes = steps.evaluate_all("els => els.map(e => [...e.classList].find(c => c.startsWith('st-key-nav_')))")
+    return [c.split("_", 2)[2] for c in classes]
+
+
+def test_landing_page_has_one_cta_and_the_four_step_overview(landing):
+    expect = sync_api.expect
+    expect(landing.locator(".qs-name")).to_have_text("QASeed")
+    expect(landing.locator(".qs-brand svg")).to_be_visible()
+    expect(landing.get_by_text("Less setup. More testing.")).to_be_visible()
+    expect(landing.locator(".qs-overview .item")).to_have_count(4)
+    expect(landing.locator(".st-key-start_btn button")).to_have_text(re.compile("Get started"))
+    assert landing.locator(".st-key-home_btn").count() == 0
 
 
 def test_brand_and_ready_made_mode_without_api_key(page):
     expect = sync_api.expect
     expect(page.locator(".qs-name")).to_have_text("QASeed")
-    expect(page.locator(".qs-brand img")).to_be_visible()  # tracked logo: branded locally and when hosted
+    expect(page.locator(".st-key-home_btn button")).to_be_visible()
     if not BASE_URL:  # the local test server has no key; a deployed app has one in its Secrets
         expect(page.get_by_text("Live AI is not set up")).to_be_visible()
     expect(page.locator(".st-key-sample_choice")).to_be_visible()
 
 
-def test_payment_example_end_to_end_with_verified_csv_download(page):
+def test_payment_example_end_to_end_with_verified_downloads(page):
+    expect = sync_api.expect
     pick_example(page, PAYMENT_ID)
-    page.get_by_text("Plan is valid").wait_for(timeout=30_000)
-    page.locator(".st-key-generate_btn button").click()
-    page.get_by_text("Download verified").wait_for(timeout=30_000)
+    review_and_verify(page)
     values = page.locator('[data-testid="stMetricValue"]')
-    sync_api.expect(values.nth(0)).to_have_text("48")  # rows generated
-    sync_api.expect(values.nth(1)).to_have_text("24/24")  # data checks passed
+    for i, value in enumerate(["48", "48", "24/24", "0"]):  # planned, created, checks passed, checks failed
+        expect(values.nth(i)).to_have_text(value)
+    expect(page.get_by_text("All checks passed. Your 48 records match the plan.")).to_be_visible()
+    open_outputs(page)
+    expect(page.locator('[data-testid="stDownloadButton"]')).to_have_count(1)  # one ZIP holds every file
     with page.expect_download() as info:
         page.locator(".st-key-download_csv_zip button").click()
     data = info.value.path().read_bytes()
     names = zipfile.ZipFile(io.BytesIO(data)).namelist()
     assert names == ["customers.csv", "subscriptions.csv", "invoices.csv", "payments.csv", "validation_report.json"]
-    assert info.value.suggested_filename == "qaseed_d5-01_seed42_csv.zip"
-    with page.expect_download() as report_info:
-        page.locator(".st-key-download_report_json button").click()
+    assert re.fullmatch(r"qaseed_test_data_\d{4}-\d{2}-\d{2}_\d{4}\.zip", info.value.suggested_filename)
     import json
 
-    report = json.loads(report_info.value.path().read_text(encoding="utf-8"))
-    assert report_info.value.suggested_filename == "qaseed_d5-01_seed42_validation_report.json"
+    report = json.loads(zipfile.ZipFile(io.BytesIO(data)).read("validation_report.json"))
     assert report["export_format"] == "csv" and report["summary"]["passed"] is True
-    assert report == json.loads(zipfile.ZipFile(io.BytesIO(data)).read("validation_report.json"))  # same report
+    payments = zipfile.ZipFile(io.BytesIO(data)).read("payments.csv").decode("utf-8").splitlines()
+    assert len(payments) == 13 and sum(",failed," in line for line in payments) == 4
 
 
-def test_negative_example_shows_plain_reason_and_no_generate_button(page):
+def test_preview_shows_the_files_inside_the_zip_without_a_download_button(page):
+    expect = sync_api.expect
+    pick_example(page, PAYMENT_ID)
+    review_and_verify(page)
+    open_outputs(page)
+    with page.expect_download() as direct:
+        page.locator(".st-key-download_csv_zip button").click()
+    archive = zipfile.ZipFile(io.BytesIO(direct.value.path().read_bytes()))
+    page.locator(".st-key-preview_csv_zip button").click()
+    dialog = page.get_by_role("dialog")
+    expect(dialog.get_by_text("ZIP contents")).to_be_visible(timeout=15_000)
+    expect(dialog.get_by_text(direct.value.suggested_filename).first).to_be_visible()
+    assert dialog.get_by_role("button", name=re.compile("^Download")).count() == 0  # no download inside Preview
+    dialog.get_by_text("payments.csv", exact=True).last.click()  # open one file from the ZIP
+    page.wait_for_timeout(1000)
+    expect(dialog.locator('[data-testid="stDataFrame"]').last).to_be_visible()
+    dialog.get_by_text("validation_report.json", exact=True).last.click()
+    expect(dialog.locator("code").first).to_contain_text('"passed": true')
+    shown = dialog.locator("code").first.inner_text()
+    assert '"checks_total": 24' in shown and archive.read("validation_report.json").decode("utf-8").startswith("{")
+
+
+def test_negative_example_shows_plain_reason_and_stays_on_describe(page):
     pick_example(page, "S16")
     page.get_by_text("Bad request: status counts exceed the total.").wait_for(timeout=30_000)
     assert page.get_by_text("on purpose").count() == 0 and page.get_by_text("How to fix").count() == 0
     assert page.locator(".st-key-generate_btn").count() == 0
+    sync_api.expect(page.locator('[class*="st-key-nav_1_"] button')).to_be_disabled()
 
 
-def tracker(page) -> list[str]:
-    sync_api.expect(page.locator(".qs-step")).to_have_count(4)  # drawn at the end of each Streamlit run
-    return page.locator(".qs-step").evaluate_all("els => els.map(e => e.className.replace('qs-step', '').trim())")
-
-
-def test_full_journey_tracker_download_and_reset_in_a_real_browser(page):
-    """Each step shows its real state; downloading completes the flow; Reset returns to a clean start."""
+def test_full_journey_home_return_and_new_in_a_real_browser(page):
+    """Each step shows its real state; Home keeps the run; Return resumes it; New starts an empty Describe."""
     expect = sync_api.expect
     assert tracker(page) == ["now", "todo", "todo", "todo"]
     pick_example(page, PAYMENT_ID)
-    page.get_by_text("Plan is valid").wait_for(timeout=30_000)
-    expect(page.locator(".qs-step").nth(1)).to_have_class(re.compile(r"\bnow\b"))
-    assert tracker(page) == ["done", "now", "todo", "todo"]  # review step is active, not skipped
-    page.locator(".st-key-generate_btn button").click()
-    page.get_by_text("Download verified").wait_for(timeout=30_000)
-    assert tracker(page) == ["done", "done", "done", "now"]
+    review_and_verify(page)
+    assert tracker(page) == ["done", "done", "now", "todo"]
+    open_outputs(page)
     with page.expect_download():
         page.locator(".st-key-download_csv_zip button").click()
-    expect(page.locator(".qs-step").nth(3)).to_have_class(re.compile(r"\bdone\b"))
-    assert tracker(page) == ["done", "done", "done", "done"]
-    page.locator(".st-key-reset_btn button").click()
-    expect(page.get_by_role("textbox", name="Your test scenario (plain English)")).to_have_value("")
-    expect(page.locator(".qs-step").nth(0)).to_have_class(re.compile(r"\bnow\b"))
+    page.locator(".st-key-home_btn button").click()
+    expect(page.locator(".st-key-start_btn button")).to_have_text(re.compile("Return to workspace"))
+    page.locator(".st-key-start_btn button").click()
+    page.get_by_text("Download results").wait_for(timeout=30_000)  # resumed where we left off
+    assert tracker(page) == ["done", "done", "done", "now"]
+    page.locator(".st-key-new_btn button").click()
+    expect(page.get_by_role("textbox", name="Test scenario")).to_have_value("")
     assert tracker(page) == ["now", "todo", "todo", "todo"]
-    assert page.get_by_text("2 · Review the AI plan").count() == 0
     assert page.locator(".st-key-download_csv_zip").count() == 0
 
 
 def test_header_is_not_hidden_under_streamlits_top_bar(page):
-    """The QASeed brand row starts below Streamlit's top bar with the sidebar open or collapsed.
+    """The QASeed header starts below Streamlit's top bar with the sidebar open or collapsed.
 
     Day 7 hotfix: on Streamlit Community Cloud the top bar is opaque, so a brand row under it was cut off.
     """
