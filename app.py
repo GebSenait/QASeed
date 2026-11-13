@@ -77,9 +77,9 @@ QUICK_EXAMPLES = [  # editable starting points, all supported built-in scenarios
 ]
 STYLE = """
 <style>
-.block-container {max-width: 1180px; padding-top: 1.6rem; padding-bottom: 2rem;}
-/* Sidebar collapsed: Streamlit's top bar then shows its logo and "»" button, so start below that bar */
-.stApp:has([data-testid="stSidebar"][data-collapsed="true"]) .block-container {padding-top: 4rem;}
+/* Always start below Streamlit's top bar (3.75rem). Locally it is transparent, but on Streamlit Community Cloud it
+   is opaque (Share / GitHub buttons) and covered the logo row when the content started higher. */
+.block-container {max-width: 1180px; padding-top: 4rem; padding-bottom: 2rem;}
 [data-testid="stHeading"] h3 {font-size: 1.15rem; font-weight: 700; padding: 0.1rem 0 0.4rem;}
 .qs-brand {display: flex; align-items: center; flex-wrap: wrap; column-gap: 0.75rem; row-gap: 0.3rem; margin: 0 0 0.7rem;}
 .qs-brand img {width: 44px; height: 44px; display: block;}
