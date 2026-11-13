@@ -7,6 +7,7 @@ REQUIRED_FILES = (
     "README.md",
     "requirements.txt",
     "assets/brand/qaseed_logo.png",
+    "assets/brand/qaseed_mark.png",  # browser-tab icon: the header's sprout mark
     "app.py",
     ".gitignore",
     ".env.example",
