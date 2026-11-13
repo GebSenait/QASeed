@@ -1,13 +1,13 @@
-# QASeed look and feel (matches the LinkedIn graphics: near-black text, QASeed green, warm off-white).
+# QASeed look and feel (approved UX palette: navy text, primary blue, soft-blue selection, light canvas).
 # No secrets here; secrets.toml in this folder stays gitignored.
 
 [theme]
 base = "light"
-primaryColor = "#1B813E"
-backgroundColor = "#F8F8F6"
-secondaryBackgroundColor = "#F0F0EC"
-textColor = "#16191B"
-borderColor = "#E3E3DD"
+primaryColor = "#1769AA"
+backgroundColor = "#F7F9FC"
+secondaryBackgroundColor = "#EEF3F8"
+textColor = "#102A43"
+borderColor = "#DCE4ED"
 font = "sans serif"
 baseRadius = "0.6rem"
 
