@@ -11,6 +11,8 @@ Setup once:  python -m playwright install chromium
 Skip it:     python -m pytest -m "not browser"
 Deployed app (smoke test the public URL, still no API call):
     QASEED_BASE_URL=https://<your-app>.streamlit.app python -m pytest -m browser tests/test_browser_smoke.py
+The plain Streamlit Community Cloud URL is fine: Cloud shows the app in a frame
+served from /~/+/, and the tests switch to that inner address themselves.
 """
 
 from __future__ import annotations
@@ -22,6 +24,7 @@ import socket
 import subprocess
 import sys
 import time
+import urllib.parse
 import urllib.request
 import zipfile
 
@@ -35,7 +38,25 @@ sync_api = pytest.importorskip("playwright.sync_api", reason="playwright is not 
 
 PAYMENT_ID = "D5-01"
 STARTUP_SECONDS = 60
-BASE_URL = os.environ.get("QASEED_BASE_URL", "").rstrip("/")  # set to test a deployed app instead of a local server
+CLOUD_APP_PATH = "/~/+/"  # where Streamlit Community Cloud serves the app itself (needs the trailing slash)
+
+
+def deployed_app_url(url: str) -> str:
+    """The address the tests open for a deployed app.
+
+    Streamlit Community Cloud's public URL (https://<name>.streamlit.app) is a wrapper page with the app in a
+    frame, so QASeed's elements are not on it. For that URL the tests open the frame's own address instead.
+    Any other URL is used as given, without a trailing slash.
+    """
+    url = url.strip()
+    parts = urllib.parse.urlsplit(url)
+    host = (parts.hostname or "").lower()
+    if host.endswith(".streamlit.app") and parts.path.strip("/") == "" and not parts.query:
+        return urllib.parse.urlunsplit((parts.scheme or "https", parts.netloc, CLOUD_APP_PATH, "", ""))
+    return url.rstrip("/")
+
+
+BASE_URL = deployed_app_url(os.environ.get("QASEED_BASE_URL", ""))  # set to test a deployed app instead of a local server
 
 
 def _free_port() -> int:
@@ -214,3 +235,19 @@ def test_header_is_not_hidden_under_streamlits_top_bar(page):
     header_bottom, brand_top = tops()
     assert brand_top >= header_bottom, f"header {header_bottom}px overlaps the brand row at {brand_top}px"
     expect(page.locator(".qs-name")).to_be_visible()
+
+
+@pytest.mark.parametrize("given,opened", [
+    # Streamlit Community Cloud public URL -> the app's own address inside Cloud's frame (Day 7 finding)
+    ("https://proven-data-seed.streamlit.app", "https://proven-data-seed.streamlit.app/~/+/"),
+    ("https://proven-data-seed.streamlit.app/", "https://proven-data-seed.streamlit.app/~/+/"),
+    ("  https://Proven-Data-Seed.streamlit.app  ", "https://Proven-Data-Seed.streamlit.app/~/+/"),
+    # an inner address given explicitly (the Day 7 workaround) is kept exactly
+    ("https://proven-data-seed.streamlit.app/~/+/?", "https://proven-data-seed.streamlit.app/~/+/?"),
+    # anything else: as given, without a trailing slash; blank means "start a local server"
+    ("http://127.0.0.1:8501/", "http://127.0.0.1:8501"),
+    ("https://qaseed.example.com/", "https://qaseed.example.com"),
+    ("", ""),
+])
+def test_deployed_app_url_opens_the_app_itself(given, opened):
+    assert deployed_app_url(given) == opened

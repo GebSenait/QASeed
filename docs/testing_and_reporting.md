@@ -42,6 +42,18 @@ Open the HTML file from `reports/dayN/` in a browser. `reports/dayN/index.md` li
 
 Quick runs without a report are still fine: `python -m pytest -q`.
 
+## Smoke test of the deployed app (Playwright, headless)
+
+The 5 browser tests can run against the hosted app instead of a local server. They stay in Ready-made examples mode, so they make no Gemini calls. PowerShell:
+
+```bash
+$env:QASEED_BASE_URL = "https://proven-data-seed.streamlit.app"
+python scripts/test_report.py --day 7 -- -m browser
+Remove-Item Env:QASEED_BASE_URL
+```
+
+Use the public app URL as it is. Streamlit Community Cloud shows the app in a frame served from `/~/+/`, and the tests open that inner address themselves; the outer page does not contain QASeed's elements. Open the URL in a browser first if the app may be asleep.
+
 ## Rules
 
 1. **One test file per module.** Every `qaseed/<name>.py` and `app.py` must have `tests/test_<name>.py`. `tests/test_layout.py::test_every_module_has_its_own_test_file` fails if one is missing, so a new Day 4–8 module (e.g. a generator) needs its test file in the same change.
@@ -71,7 +83,7 @@ Quick runs without a report are still fine: `python -m pytest -q`.
 | `test_pipeline.py` | UI service layer: offline/live/no-key/API-error planning, generation, export gating, validation report, safe logging |
 | `test_export.py` | CSV ZIP export: files, record counts, columns, IDs, cross-file foreign keys, requested conditions, reload into a fresh DB, tamper detection (SQL export is post-MVP) |
 | `test_app.py` | Streamlit journeys (headless AppTest): success with CSV download, invalid scenario, no key, API errors, duplicate clicks, stale plan, reset |
-| `test_browser_smoke.py` | Real browser (Playwright + headless Chromium) against the running Streamlit server, no API key: brand and mode, payment example to a verified CSV ZIP download, rejected example. Skip with `-m "not browser"`; setup `python -m playwright install chromium` |
+| `test_browser_smoke.py` | Real browser (Playwright + headless Chromium) against the running Streamlit server, no API key: brand and mode, payment example to a verified CSV ZIP download, rejected example, header not hidden under Streamlit's top bar; also runs against the deployed app with `QASEED_BASE_URL`. Skip with `-m "not browser"`; setup `python -m playwright install chromium` |
 | `test_report_script.py` | Daily report helper |
 | `test_day4_baseline.py` | Day 4 baseline replay (Day 3 planner loaded from Git) |
 | `test_day5_ui_e2e.py` | `scripts/day5_ui_e2e.py`: app clicked through headless with the payment scenario (offline), live mode needs `--confirm`, ZIP check catches a failed payment on a paid invoice |
