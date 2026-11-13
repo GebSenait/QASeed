@@ -8,32 +8,45 @@ generation or a verification by themselves.
 
 import base64
 import html
+import importlib
+import logging
 import re
+import threading
 from datetime import date, datetime
 from pathlib import Path
 
 import streamlit as st
 
-from qaseed import __version__, pipeline
-from qaseed import artifacts  # Download step: files read from the verified run's own bytes
 from qaseed.config import load_local_env
-from qaseed.generator import DEFAULT_SEED
-from qaseed.guardrails import clean_text
-from qaseed.planner import MAX_SCENARIO_CHARS
-from qaseed.schema import create_connection, inspect_schema
 
+# The workspace's heavy modules (pipeline -> SQLAlchemy and Faker; pandas/pyarrow for tables) are imported below the
+# landing page, so a first visit shows the landing page without waiting for them. A background warm-up loads them
+# while the landing page is read, so Get started does not wait either.
 load_local_env()
-try:  # Streamlit Community Cloud: the API key and settings come from the app's Secrets box
-    pipeline.load_secrets(st.secrets)
-except Exception:  # no secrets configured (e.g. local run with .env)
-    pass
-log = pipeline.configure_logging()
+log = logging.getLogger("qaseed")  # the logger pipeline.configure_logging() sets up once the workspace opens
 
 # Browser-tab icon: the same sprout mark as the header (tracked in the repo). The app still works without it.
 LOGO = Path(__file__).resolve().parent / "assets" / "brand" / "qaseed_mark.png"
 HAS_LOGO = LOGO.is_file()
 
 st.set_page_config(page_title="QASeed", page_icon=str(LOGO) if HAS_LOGO else "🌱", layout="centered")
+
+WARM_UP_MODULES = ("qaseed.pipeline", "qaseed.artifacts", "qaseed.schema", "qaseed.planner", "pandas", "pyarrow")
+
+
+@st.cache_resource(show_spinner=False)
+def warm_up_workspace() -> threading.Thread:
+    """Once per server process: import the workspace's modules in the background while the landing page is shown."""
+    def work() -> None:
+        for name in WARM_UP_MODULES:
+            try:
+                importlib.import_module(name)
+            except Exception:  # a failed warm-up only means the normal import happens when the workspace opens
+                pass
+
+    thread = threading.Thread(target=work, name="qaseed-warm-up", daemon=True)
+    thread.start()
+    return thread
 
 LIVE, OFFLINE = "live", "offline"
 STEPS = ["Describe", "Review", "Verify", "Download"]
@@ -106,6 +119,8 @@ STYLE = """
 .block-container {max-width: 880px; padding-top: 4rem; padding-bottom: 2rem;}
 [data-testid="stHeading"] h3 {font-size: 1.4rem; font-weight: 700; color: var(--qs-navy); padding: 0 0 0.2rem;}
 button:focus-visible, textarea:focus-visible {outline: 3px solid #8FC3EB !important; outline-offset: 2px;}
+/* Reruns: keep the current screen crisp instead of fading it out while the next one loads */
+[data-stale="true"] {opacity: 1 !important; transition: none !important;}
 
 /* header: navy bar, sprout mark, wordmark, Home */
 .st-key-qs_header {background: var(--qs-navy); border-radius: 14px; padding: 0.7rem 1.1rem; margin-bottom: 0.4rem;}
@@ -200,7 +215,6 @@ for name, value in STATE_DEFAULTS.items():
     st.session_state.setdefault(name, value)
 st.session_state.setdefault("page", "landing")  # landing | workspace
 st.session_state.setdefault("workspace_started", False)  # the visitor opened the workspace in this session
-st.session_state.setdefault("seed", DEFAULT_SEED)
 st.session_state.setdefault("as_of", date.today())
 # Result of the last real Gemini call in this session (kept across New): None = not verified yet.
 st.session_state.setdefault("live_check", None)
@@ -209,7 +223,7 @@ st.session_state.setdefault("live_plans_used", 0)
 
 
 @st.cache_resource
-def daily_live_counter() -> pipeline.DailyCounter:
+def daily_live_counter() -> "pipeline.DailyCounter":
     """Live AI plans used today by all visitors of this app (shared across sessions)."""
     return pipeline.DailyCounter()
 
@@ -638,7 +652,25 @@ if st.session_state.page == "landing":
                         f"<span>{text}</span></div>" for name, paths, text in OVERVIEW)
         html_block(f'<p class="qs-small" style="margin-bottom:0.6rem">HOW IT WORKS</p><div class="qs-overview">{items}</div>')
     html_block('<p class="qs-footer">Less setup. More testing.</p>')
+    warm_up_workspace()  # after the landing page is sent, so the first paint never waits for it
     st.stop()
+
+
+# ---- workspace modules: imported here, after the landing page (and usually already warmed up) -------
+
+from qaseed import __version__, pipeline  # noqa: E402
+from qaseed import artifacts  # noqa: E402  Download step: files read from the verified run's own bytes
+from qaseed.generator import DEFAULT_SEED  # noqa: E402
+from qaseed.guardrails import clean_text  # noqa: E402
+from qaseed.planner import MAX_SCENARIO_CHARS  # noqa: E402
+from qaseed.schema import create_connection, inspect_schema  # noqa: E402
+
+try:  # Streamlit Community Cloud: the API key and settings come from the app's Secrets box
+    pipeline.load_secrets(st.secrets)
+except Exception:  # no secrets configured (e.g. local run with .env)
+    pass
+log = pipeline.configure_logging()
+st.session_state.setdefault("seed", DEFAULT_SEED)
 
 
 # ---- sidebar: planning mode, ready-made examples, settings, about (workspace only) ---------------
