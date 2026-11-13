@@ -160,6 +160,20 @@ def test_landing_page_has_the_approved_copy_and_one_cta(no_key):
     assert any('<span class="qs-name">QASeed</span>' in m.value for m in app.markdown)  # header wordmark
 
 
+def test_screens_do_not_fade_while_the_next_one_loads(no_key):
+    """Streamlit fades the current screen during a rerun; QASeed keeps it crisp (no 'blurred' Get started)."""
+    assert any('[data-stale="true"] {opacity: 1 !important; transition: none !important;}' in m.value
+               for m in landing().markdown)
+
+
+def test_landing_page_does_not_wait_for_the_workspace_modules():
+    """The heavy workspace imports come after the landing page; a background warm-up loads them meanwhile."""
+    source = (ROOT / "app.py").read_text(encoding="utf-8")
+    landing_end = source.index("warm_up_workspace()  # after the landing page is sent")
+    assert source.index("from qaseed import __version__, pipeline") > landing_end
+    assert source.index("from qaseed.generator import DEFAULT_SEED") > landing_end
+
+
 def test_get_started_opens_an_empty_describe_step(no_key):
     app = start()
     assert [s.value for s in app.subheader] == ["Describe"]
