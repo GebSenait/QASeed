@@ -101,7 +101,7 @@ python -m pytest -q                               # all tests, offline (no API c
 
 ## Testing & Reliability
 
-- **404 automated tests** (offline, fake keys) cover planning, guardrails, API errors and retries, schema validation, generation, business rules, data relationships, independent checks, CSV export, the Streamlit journeys (AppTest) and 5 real-browser tests (Playwright + Chromium).
+- **454 automated tests** (offline, fake keys) cover planning, guardrails, API errors and retries, schema validation, generation, business rules, data relationships, independent checks, CSV export, the Streamlit journeys (AppTest) and 5 real-browser tests (Playwright + Chromium).
 - **Evaluation:** 30-scenario set, 21/30 → 30/30 after the Day 4 prompt and guardrail changes (mock replies); live Gemini 22/22. 0 unsafe requests accepted.
 
 | Command | What it does |
@@ -113,6 +113,14 @@ python -m pytest -q                               # all tests, offline (no API c
 | `python -m qaseed.generator --all` | Requested vs generated vs verified for every valid example |
 
 Live commands (`--live`, `python -m qaseed.llm_ping`) call Gemini and print `status=SKIPPED` without a key. A skip is not a pass. Evidence: [reports/](reports/README.md) · [testing guide](docs/testing_and_reporting.md) · daily evidence: [Day 3](docs/day3_evidence.md) · [Day 4](docs/day4_evidence.md) · [Day 5](docs/day5_evidence.md) · [Day 6](docs/day6_release_readiness.md)
+
+## Current Limitations & Roadmap
+
+- **Fixed schema:** one sample SaaS billing schema (customers → subscriptions → invoices → payments).
+- **Pattern-based guardrails:** new phrasing can pass the input filter. The schema validator, strict JSON contract and plain-text display limit the impact: the model cannot run SQL, add tables or show HTML.
+- **Per-session limits:** 3 Live AI plans and 20 generation runs per session; 40 Live AI plans per day (in-memory counter, resets when the app restarts).
+- **Slow worst case:** one live plan can take up to about 5 minutes if Gemini keeps timing out (bounded retries).
+- **Roadmap:** automatic repair of failed checks, custom schemas, an overall deadline for live planning.
 
 ## Author
 

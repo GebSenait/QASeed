@@ -13,3 +13,4 @@ baseRadius = "0.6rem"
 
 [client]
 toolbarMode = "minimal"  # hides the developer "Deploy" menu for demos
+showErrorDetails = "type"

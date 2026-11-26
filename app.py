@@ -88,6 +88,7 @@ GENERATION_ERROR_LINE = {  # pipeline.PipelineError categories
     "generation_invalid": "Bad request: these counts can't all be generated consistently.",
     "plan_not_valid": "Plan not valid.",
 }
+GENERATE_LIMIT_LINE = "Generate limit reached for this session. Download the current result, or come back later."
 # Describe-step examples: (label, built-in example id). Each one has a recorded AI reply, so it also plans in
 # Ready-made examples mode (the hosted default) without an API call, and its text stays editable.
 QUICK_EXAMPLES = [("Payments", "D5-01"), ("Subscriptions", "S03"), ("Invoices", "S05")]
@@ -206,6 +207,7 @@ STATE_DEFAULTS = {
     "gen_result": None,  # pipeline.GenerationResult
     "gen_key": None,  # (plan_key, seed, as_of) the data was generated for
     "gen_error": "",
+    "gen_limited": False,  # the last Generate press hit the per-session generation limit
     "gen_at": None,  # when the current run finished: gives its ZIP a clear, stable name
     "downloaded": False,  # the user downloaded a file of the current result
     "notice": "",
@@ -220,6 +222,8 @@ st.session_state.setdefault("as_of", date.today())
 st.session_state.setdefault("live_check", None)
 # Live AI plans this visitor has started (kept across New, so New cannot lift the limit).
 st.session_state.setdefault("live_plans_used", 0)
+# Real generation runs in this session (kept across New, so New cannot lift the limit).
+st.session_state.setdefault("generations_used", 0)
 
 
 @st.cache_resource
@@ -235,6 +239,7 @@ def clear_generation() -> None:
     st.session_state.gen_result = None
     st.session_state.gen_key = None
     st.session_state.gen_error = ""
+    st.session_state.gen_limited = False
     st.session_state.gen_at = None
     st.session_state.downloaded = False
 
@@ -871,6 +876,8 @@ elif step == 1:
         st.checkbox("I've reviewed the plan.", key="reviewed", persist_state="page")
         if st.session_state.gen_error:
             st.error(st.session_state.gen_error)
+        elif st.session_state.gen_limited and not run_ready():
+            st.warning(GENERATE_LIMIT_LINE)
         elif st.session_state.gen_result is not None and not run_ready():
             st.caption("Seed or date changed since the last run: press Generate & verify to use the new settings.")
         back, generate = two_buttons("review_back", "Generate & verify", "generate_btn",
@@ -882,7 +889,11 @@ elif step == 1:
             if run_ready():
                 st.session_state.notice = "Already generated with these settings."
                 log.info("event=generate status=reused")
+            elif st.session_state.generations_used >= pipeline.generation_limit():
+                st.session_state.gen_limited = True
+                log.info("event=generate status=limited")
             else:
+                st.session_state.generations_used += 1
                 clear_generation()
                 with st.spinner("Generating linked rows and running independent SQL checks…"):
                     try:
