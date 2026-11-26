@@ -269,6 +269,22 @@ def test_live_limits(env, expected):
     assert pipeline.live_limits(env) == expected
 
 
+@pytest.mark.parametrize("env, expected", [
+    ({}, 20),
+    ({"QASEED_GENERATIONS_PER_SESSION": " 5 "}, 5),
+    ({"QASEED_GENERATIONS_PER_SESSION": "abc"}, 20),
+    ({"QASEED_GENERATIONS_PER_SESSION": "-2"}, 0),
+])
+def test_generation_limit(env, expected):
+    assert pipeline.generation_limit(env) == expected
+
+
+def test_generation_limit_can_be_set_from_hosted_secrets():
+    env = {}
+    assert pipeline.load_secrets({"QASEED_GENERATIONS_PER_SESSION": "10"}, env) == ["QASEED_GENERATIONS_PER_SESSION"]
+    assert pipeline.generation_limit(env) == 10
+
+
 def test_default_mode():
     assert pipeline.default_mode(["live", "offline"], {}) == "live"
     assert pipeline.default_mode(["live", "offline"], {"QASEED_DEFAULT_MODE": "Offline"}) == "offline"

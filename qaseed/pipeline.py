@@ -49,11 +49,13 @@ _sleep = time.sleep  # retry backoff; tests replace it
 LIVE_PER_SESSION_ENV = "QASEED_LIVE_PLANS_PER_SESSION"
 LIVE_PER_DAY_ENV = "QASEED_LIVE_PLANS_PER_DAY"
 DEFAULT_MODE_ENV = "QASEED_DEFAULT_MODE"
+GENERATIONS_PER_SESSION_ENV = "QASEED_GENERATIONS_PER_SESSION"
 DEFAULT_LIVE_PER_SESSION = 3
 DEFAULT_LIVE_PER_DAY = 40
+DEFAULT_GENERATIONS_PER_SESSION = 20
 # Only these secret names are copied into the environment; anything else in st.secrets is ignored.
 SECRET_NAMES = (llm_client.KEY_NAME, llm_client.MODEL_NAME, llm_client.THINKING_NAME,
-                LIVE_PER_SESSION_ENV, LIVE_PER_DAY_ENV, DEFAULT_MODE_ENV)
+                LIVE_PER_SESSION_ENV, LIVE_PER_DAY_ENV, DEFAULT_MODE_ENV, GENERATIONS_PER_SESSION_ENV)
 
 
 class PipelineError(RuntimeError):
@@ -128,6 +130,15 @@ def live_limits(env=None) -> dict[str, int]:
 
     return {"per_session": number(LIVE_PER_SESSION_ENV, DEFAULT_LIVE_PER_SESSION),
             "per_day": number(LIVE_PER_DAY_ENV, DEFAULT_LIVE_PER_DAY)}
+
+
+def generation_limit(env=None) -> int:
+    """Real generation runs allowed per visitor session (CPU only, no API cost). Bad values fall back to the default."""
+    env = os.environ if env is None else env
+    try:
+        return max(0, int(str(env.get(GENERATIONS_PER_SESSION_ENV, DEFAULT_GENERATIONS_PER_SESSION)).strip()))
+    except ValueError:
+        return DEFAULT_GENERATIONS_PER_SESSION
 
 
 def default_mode(options: list[str], env=None) -> str:

@@ -18,6 +18,7 @@ import qaseed.llm_client as llm_client
 import qaseed.pipeline as pipeline
 from qaseed.config import ROOT
 from qaseed.evaluate import load_scenarios, sequence_post
+from qaseed.generator import DEFAULT_SEED
 from qaseed.llm_client import KEY_NAME, MODEL_NAME
 
 FAKE_KEY = "AIzaTEST_fake_app_key_0000"
@@ -639,6 +640,34 @@ def test_changing_the_seed_after_a_run_falls_back_to_review(no_key, counted):
     assert any("Seed or date changed" in c.value for c in app.caption)
     generate(app)
     assert counted["generate"] == 2 and app.session_state["gen_result"].seed == 7
+
+
+def test_generate_is_capped_per_session(no_key, counted, monkeypatch):
+    monkeypatch.setenv("QASEED_GENERATIONS_PER_SESSION", "1")
+    app = run_sample("S05")
+    assert counted["generate"] == 1 and app.session_state["generations_used"] == 1
+    app.number_input(key="seed").set_value(7).run()
+    click(app, "generate_btn")  # a new seed needs a new run: over the limit
+    assert counted["generate"] == 1 and app.session_state["step"] == 1
+    assert [w.value for w in app.main.warning] == [
+        "Generate limit reached for this session. Download the current result, or come back later."]
+    app.number_input(key="seed").set_value(DEFAULT_SEED).run()
+    assert not app.main.warning  # back on the settings of the finished run: nothing is blocked
+    click(app, "generate_btn")  # reusing the existing result is not a new run
+    assert counted["generate"] == 1 and app.session_state["step"] == 2
+    click(app, "outputs_btn")
+    click(app, "new_btn")  # New does not lift the limit
+    plan(load_sample(app, "S01"))
+    generate(app)
+    assert counted["generate"] == 1 and app.session_state["generations_used"] == 1
+    assert any("Generate limit reached" in w.value for w in app.main.warning)
+
+
+def test_generate_limit_of_zero_blocks_the_first_run(no_key, counted, monkeypatch):
+    monkeypatch.setenv("QASEED_GENERATIONS_PER_SESSION", "0")
+    app = generate(plan(load_sample(start(), "S05")))
+    assert counted["generate"] == 0 and app.session_state["gen_result"] is None
+    assert any("Generate limit reached" in w.value for w in app.main.warning)
 
 
 # ---- Download and New ---------------------------------------------------------------------------
