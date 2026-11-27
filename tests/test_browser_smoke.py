@@ -110,6 +110,25 @@ def browser():
 
 
 HEADLINE = "From test scenarios to verified data."
+NETWORK_ERRORS = ("ERR_NAME_NOT_RESOLVED", "ERR_INTERNET_DISCONNECTED", "ERR_NETWORK_CHANGED",
+                  "ERR_CONNECTION_RESET", "ERR_CONNECTION_CLOSED", "ERR_CONNECTION_TIMED_OUT", "ERR_TIMED_OUT")
+GOTO_ATTEMPTS = 3
+GOTO_PAUSES_S = (10, 20)  # wait between attempts: lets a brief DNS or network hiccup clear
+NO_ACCESS_TEXT = "You do not have access to this app or it does not exist"  # Streamlit Cloud's sign-in page
+
+
+def open_app(page, url: str) -> None:
+    """Open the app, retrying brief network failures (a deployed app is reached over the internet)."""
+    for attempt in range(1, GOTO_ATTEMPTS + 1):
+        try:
+            page.goto(url)
+            break
+        except sync_api.Error as exc:
+            if attempt == GOTO_ATTEMPTS or not any(code in str(exc) for code in NETWORK_ERRORS):
+                raise
+            time.sleep(GOTO_PAUSES_S[attempt - 1])
+    if BASE_URL and page.get_by_text(NO_ACCESS_TEXT).count():
+        pytest.fail(f"{url} needs a sign-in or does not exist: set the app's sharing to public on Streamlit Cloud")
 
 
 @pytest.fixture
@@ -117,7 +136,7 @@ def landing(browser, app_url):
     """A fresh visitor on the landing page."""
     context = browser.new_context(viewport={"width": 1440, "height": 900}, accept_downloads=True)
     page = context.new_page()
-    page.goto(app_url)
+    open_app(page, app_url)
     heading = page.get_by_text(HEADLINE)
     try:
         heading.wait_for(timeout=120_000 if BASE_URL else 30_000)  # a hosted app may wake from sleep
