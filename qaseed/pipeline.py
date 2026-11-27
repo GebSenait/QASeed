@@ -21,6 +21,7 @@ number-shaped text from every record.
 
 from __future__ import annotations
 
+import hashlib
 import io
 import logging
 import os
@@ -50,12 +51,15 @@ LIVE_PER_SESSION_ENV = "QASEED_LIVE_PLANS_PER_SESSION"
 LIVE_PER_DAY_ENV = "QASEED_LIVE_PLANS_PER_DAY"
 DEFAULT_MODE_ENV = "QASEED_DEFAULT_MODE"
 GENERATIONS_PER_SESSION_ENV = "QASEED_GENERATIONS_PER_SESSION"
+LIVE_PER_VIEWER_DAY_ENV = "QASEED_LIVE_PLANS_PER_VIEWER_PER_DAY"
 DEFAULT_LIVE_PER_SESSION = 3
 DEFAULT_LIVE_PER_DAY = 40
+DEFAULT_LIVE_PER_VIEWER_DAY = 10
 DEFAULT_GENERATIONS_PER_SESSION = 20
 # Only these secret names are copied into the environment; anything else in st.secrets is ignored.
 SECRET_NAMES = (llm_client.KEY_NAME, llm_client.MODEL_NAME, llm_client.THINKING_NAME,
-                LIVE_PER_SESSION_ENV, LIVE_PER_DAY_ENV, DEFAULT_MODE_ENV, GENERATIONS_PER_SESSION_ENV)
+                LIVE_PER_SESSION_ENV, LIVE_PER_DAY_ENV, DEFAULT_MODE_ENV, GENERATIONS_PER_SESSION_ENV,
+                LIVE_PER_VIEWER_DAY_ENV)
 
 
 class PipelineError(RuntimeError):
@@ -132,6 +136,30 @@ def live_limits(env=None) -> dict[str, int]:
             "per_day": number(LIVE_PER_DAY_ENV, DEFAULT_LIVE_PER_DAY)}
 
 
+def viewer_live_limit(env=None) -> int:
+    """Live AI plans allowed per signed-in viewer per day (survives refresh and new tabs). Bad values -> default."""
+    env = os.environ if env is None else env
+    try:
+        return max(0, int(str(env.get(LIVE_PER_VIEWER_DAY_ENV, DEFAULT_LIVE_PER_VIEWER_DAY)).strip()))
+    except ValueError:
+        return DEFAULT_LIVE_PER_VIEWER_DAY
+
+
+def viewer_key(user) -> str:
+    """Stable, non-reversible key for the signed-in viewer, or "" when the host gives no identity.
+
+    Streamlit fills st.user from the hosting platform (e.g. a private Streamlit Community Cloud app) or from
+    st.login. Only a hash of the normalised email is kept, so no email is stored in memory maps or logs.
+    """
+    try:
+        email = user.get("email") if hasattr(user, "get") else None
+    except Exception:  # st.user can raise outside a script run
+        return ""
+    if not isinstance(email, str) or "@" not in email.strip():
+        return ""
+    return "viewer:" + hashlib.sha256(email.strip().lower().encode("utf-8")).hexdigest()[:24]
+
+
 def generation_limit(env=None) -> int:
     """Real generation runs allowed per visitor session (CPU only, no API cost). Bad values fall back to the default."""
     env = os.environ if env is None else env
@@ -165,6 +193,46 @@ class DailyCounter:
                 return False
             self.used += 1
             return True
+
+
+class DailyViewerUsage:
+    """Live AI plans used today per viewer key, in this app process (thread-safe, resets at midnight).
+
+    Unlike st.session_state, this is shared by every session of the process, so a refresh, a new tab or New
+    cannot lift a viewer's limit. It does not survive an app reboot (process memory only).
+    """
+
+    def __init__(self) -> None:
+        self._lock = threading.Lock()
+        self.day: date | None = None
+        self._used: dict[str, int] = {}
+
+    def _roll(self, today: date) -> None:
+        if self.day != today:
+            self.day, self._used = today, {}
+
+    def try_use(self, key: str, limit: int, today: date | None = None) -> bool:
+        today = today or date.today()
+        with self._lock:
+            self._roll(today)
+            if self._used.get(key, 0) >= limit:
+                return False
+            self._used[key] = self._used.get(key, 0) + 1
+            return True
+
+    def release(self, key: str, today: date | None = None) -> None:
+        """Give one plan back (another limit refused the request before any API call)."""
+        today = today or date.today()
+        with self._lock:
+            self._roll(today)
+            if self._used.get(key, 0) > 0:
+                self._used[key] -= 1
+
+    def used(self, key: str, today: date | None = None) -> int:
+        today = today or date.today()
+        with self._lock:
+            self._roll(today)
+            return self._used.get(key, 0)
 
 
 def llm_status(env: dict[str, str] | None = None) -> dict:
