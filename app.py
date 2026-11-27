@@ -694,7 +694,6 @@ from qaseed import artifacts  # noqa: E402  Download step: files read from the v
 from qaseed.generator import DEFAULT_SEED  # noqa: E402
 from qaseed.guardrails import clean_text  # noqa: E402
 from qaseed.planner import MAX_SCENARIO_CHARS  # noqa: E402
-from qaseed.schema import create_connection, inspect_schema  # noqa: E402
 
 try:  # Streamlit Community Cloud: the API key and settings come from the app's Secrets box
     pipeline.load_secrets(st.secrets)
@@ -750,34 +749,8 @@ with st.sidebar:
         )
         st.caption("Change only to vary or reproduce data.")
     with st.expander("About"):
-        st.markdown(
-            f"**QASeed v{__version__}** · synthetic test data only · no production connections.\n\n"
-            "**Project status**\n"
-            "- ✅ AI planning, schema checks, linked data generation, independent data checks, verified CSV export\n"
-            "- ✅ Day 6: security review, input and budget checks, performance fixes\n"
-            "- ✅ Day 7: hosted demo\n"
-            "- ⏭️ Post-MVP: SQL export, automatic repair of failed checks"
-        )
-        connection = create_connection()
-        try:
-            schema = inspect_schema(connection)
-        finally:
-            connection.close()
-        st.markdown("**Sample schema** (customers → subscriptions → invoices → payments)")
-        st.caption(f"In-memory SQLite. Foreign-key enforcement is {'on' if schema['foreign_keys_enabled'] else 'off'}.")
-        for table in schema["tables"]:
-            st.markdown(f"**{table['name']}** " + " ".join(
-                f"· `{fk['from_column']} → {fk['to_table']}.{fk['to_column']}`" for fk in table["foreign_keys"]))
-            st.table([
-                {
-                    "column": column["name"],
-                    "type": column["type"],
-                    "not null": "yes" if column["not_null"] else "",
-                    "primary key": "yes" if column["primary_key"] else "",
-                    "allowed values": ", ".join(table["allowed_values"].get(column["name"], [])),
-                }
-                for column in table["columns"]
-            ])
+        # Pilot: version and data note only (no project status or database schema for testers).
+        st.markdown(f"**QASeed v{__version__}** · synthetic test data only · no production connections.")
 
 seed, as_of = int(st.session_state.seed), st.session_state.as_of
 st.session_state.step = min(st.session_state.step, max_step())  # a stale step falls back to the last valid one
