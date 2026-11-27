@@ -29,6 +29,13 @@ DESCRIPTION = ("QASeed turns natural-language test scenarios into specific, conn
                "generate the records, while independent SQL checks validate the results.")
 
 
+@pytest.fixture(autouse=True)
+def no_viewer_identity(monkeypatch):
+    """These journeys model a session with no signed-in identity (AppTest's default st.user has a test email,
+    which would make every test share one per-viewer daily budget). Per-viewer limits: test_pilot_security.py."""
+    monkeypatch.setattr(pipeline, "viewer_key", lambda user: "")
+
+
 @pytest.fixture
 def no_key(monkeypatch):
     monkeypatch.setenv(KEY_NAME, "")  # an empty value wins over .env (load_dotenv does not override)

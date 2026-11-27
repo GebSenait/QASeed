@@ -232,6 +232,20 @@ def daily_live_counter() -> "pipeline.DailyCounter":
     return pipeline.DailyCounter()
 
 
+@st.cache_resource
+def viewer_live_usage() -> "pipeline.DailyViewerUsage":
+    """Live AI plans used today per signed-in viewer (shared across sessions: refresh or a new tab keeps it)."""
+    return pipeline.DailyViewerUsage()
+
+
+def current_viewer() -> str:
+    """Hashed key of the signed-in viewer, or "" when the host provides no identity (then only session limits)."""
+    try:
+        return pipeline.viewer_key(st.user)
+    except Exception:
+        return ""
+
+
 # ---- state: invalidation, validity, navigation -------------------------------------------
 
 
@@ -373,11 +387,23 @@ def new_workflow() -> None:
 
 
 def live_plan_allowed() -> bool:
-    """Spend one Live AI plan if this session and today's app-wide budget allow it."""
+    """Spend one Live AI plan if this session, this viewer's daily budget and today's app-wide budget allow it.
+
+    The viewer and app-wide budgets live in server memory shared by all sessions, so a refresh, a new tab or
+    New cannot lift them. The session budget alone (st.session_state) resets on refresh.
+    """
     limits = pipeline.live_limits()
     if st.session_state.live_plans_used >= limits["per_session"]:
+        log.warning("event=live_budget status=limited scope=session")
+        return False
+    viewer = current_viewer()
+    if viewer and not viewer_live_usage().try_use(viewer, pipeline.viewer_live_limit()):
+        log.warning("event=live_budget status=limited scope=viewer")
         return False
     if not daily_live_counter().try_use(limits["per_day"]):
+        if viewer:
+            viewer_live_usage().release(viewer)  # nothing was sent, so the viewer keeps this plan
+        log.warning("event=live_budget status=limited scope=app")
         return False
     st.session_state.live_plans_used += 1
     return True
@@ -1033,4 +1059,9 @@ if status["configured"]:
         connection_status.caption(f"⚠ Last live request failed ({check['kind']}). Try again.")
     if st.session_state.mode == LIVE:
         left = max(0, pipeline.live_limits()["per_session"] - st.session_state.live_plans_used)
-        live_budget.caption(f"Live AI plans left in this session: {left}")
+        viewer = current_viewer()
+        if viewer:  # signed-in viewer: the daily per-viewer budget also applies and survives refresh
+            left = min(left, max(0, pipeline.viewer_live_limit() - viewer_live_usage().used(viewer)))
+            live_budget.caption(f"Live AI plans left today: {left}")
+        else:
+            live_budget.caption(f"Live AI plans left in this session: {left}")
