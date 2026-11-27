@@ -22,3 +22,7 @@ test-results/
 
 # Private project reference documents (never commit)
 _project_references/
+
+# Local-only test notes and failure screenshots (kept outside the repo in QASeed_local_reports/; never commit)
+e2e_hosted_summary*.md
+reports/**/e2e_screenshots/
