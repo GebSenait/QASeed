@@ -14,6 +14,7 @@ import zipfile
 import pytest
 from streamlit.testing.v1 import AppTest
 
+import qaseed
 import qaseed.llm_client as llm_client
 import qaseed.pipeline as pipeline
 from qaseed.config import ROOT
@@ -816,12 +817,12 @@ def test_examples_list_only_in_ready_made_mode(live):
     assert app.selectbox(key="sample_choice").placeholder == "Select"
 
 
-def test_about_expander_holds_project_status_and_schema(no_key):
+def test_about_expander_shows_only_version_and_data_note(no_key):
     app = start()
     about = next(e for e in app.sidebar.expander if e.label == "About")
-    text = "\n".join(m.value for m in about.markdown)
-    assert "Project status" in text and "Day 6" in text and "Post-MVP: SQL export" in text
-    assert len(about.table) == 4
+    assert [m.value for m in about.markdown] == [
+        f"**QASeed v{qaseed.__version__}** · synthetic test data only · no production connections."]
+    assert len(about.table) == 0 and len(about.caption) == 0  # no project status or database schema for testers
 
 
 def test_live_ai_is_capped_per_session(live, monkeypatch):
